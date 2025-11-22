@@ -13,22 +13,36 @@ class SearchUserScreen extends StatefulWidget {
 
 class _SearchUserScreenState extends State<SearchUserScreen> {
   final TextEditingController searchC = TextEditingController();
-
-  Map<String, dynamic>? foundUser; // backend’den gelen kullanıcı
-
   bool isLoading = false;
+  String? error;
+  Map<String, dynamic>? foundUser;
 
   Future<void> _searchUser() async {
     final username = searchC.text.trim();
-    if (username.isEmpty) return;
 
-    setState(() => isLoading = true);
+    if (username.isEmpty) {
+      setState(() {
+        foundUser = null;
+        error = "Please enter a username.";
+      });
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      error = null;
+      foundUser = null;
+    });
 
     final result = await ChatService().searchUser(username);
 
     setState(() {
-      foundUser = result;
       isLoading = false;
+      if (result == null) {
+        error = "No user found.";
+      } else {
+        foundUser = result;
+      }
     });
   }
 
@@ -38,54 +52,84 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Search User"),
         backgroundColor: Colors.orange[900],
+        title: const Text(
+          "Search User",
+          style: TextStyle(color: Colors.white),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            // 🔍 Search Box
             TextField(
               controller: searchC,
+              onSubmitted: (_) => _searchUser(),
               decoration: InputDecoration(
-                hintText: "Enter username…",
+                hintText: "Enter username...",
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 suffixIcon: IconButton(
-                  onPressed: _searchUser,
                   icon: const Icon(Icons.search),
+                  onPressed: _searchUser,
                 ),
               ),
             ),
+
             const SizedBox(height: 20),
 
+            // ⏳ Loading
             if (isLoading)
               const CircularProgressIndicator(),
 
-            if (!isLoading && foundUser != null)
-              ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: Text(foundUser!["username"]),
-                subtitle: Text("ID: ${foundUser!["id"]}"),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatScreen(
-                        senderId: senderId!,
-                        receiverId: foundUser!["id"],
-                        receiverName: foundUser!["username"],
-                      ),
-                    ),
-                  );
-                },
+            // ❌ Error message
+            if (!isLoading && error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: Text(
+                  error!,
+                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                ),
               ),
 
-            if (!isLoading && foundUser == null)
-              const Text("No user found"),
+            // 👤 User card
+            if (!isLoading && foundUser != null)
+              _userCard(foundUser!, senderId!),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _userCard(Map<String, dynamic> user, int currentUser) {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: const CircleAvatar(
+          radius: 24,
+          child: Icon(Icons.person),
+        ),
+        title: Text(
+          user["username"],
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text("ID: ${user['id']}"),
+        trailing: const Icon(Icons.arrow_forward_ios),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatScreen(
+                senderId: currentUser,
+                receiverId: user["id"],
+                receiverName: user["username"],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

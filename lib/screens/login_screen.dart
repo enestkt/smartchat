@@ -148,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                     if (ok) {
                                       Navigator.pushReplacementNamed(
-                                          context, '/search');
+                                          context, '/chats');
                                     } else {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(

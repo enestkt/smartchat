@@ -34,9 +34,14 @@ class ChatService {
     return res.data["messages"] ?? [];
   }
 
-  /// Mesaj gönderme
-  Future<bool> sendMessage(
-      int senderId, int receiverId, String message) async {
+  /// Chat partner listesi
+  Future<List<dynamic>> getChatPartners(int userId) async {
+    final res = await _dio.get("/chat_partners/$userId");
+    return res.data ?? [];
+  }
+
+  /// Mesaj gönderme (text)
+  Future<bool> sendMessage(int senderId, int receiverId, String message) async {
     try {
       await _dio.post("/messages", data: {
         "sender_id": senderId,
@@ -44,7 +49,42 @@ class ChatService {
         "content": message,
       });
       return true;
-    } catch (_) {
+    } catch (e) {
+      print("SEND MESSAGE ERROR: $e");
+      return false;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // 🔥 MEDIA UPLOAD (image, file, audio, video)
+  // -------------------------------------------------------------
+  Future<bool> uploadMedia({
+    required int senderId,
+    required int receiverId,
+    required String filePath,
+    required String mediaType,
+  }) async {
+    try {
+      final fileName = filePath.split('/').last;
+
+      FormData formData = FormData.fromMap({
+        "file": await MultipartFile.fromFile(filePath, filename: fileName),
+        "media_type": mediaType,
+        "sender_id": senderId.toString(),
+        "receiver_id": receiverId.toString(),
+      });
+
+      final res = await _dio.post(
+        "/upload_media",
+        data: formData,
+        options: Options(
+          headers: {"Content-Type": "multipart/form-data"},
+        ),
+      );
+
+      return res.statusCode == 200;
+    } catch (e) {
+      print("UPLOAD MEDIA ERROR: $e");
       return false;
     }
   }
