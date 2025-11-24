@@ -58,6 +58,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages = data.map<Map<String, dynamic>>((m) {
         return {
           "text": m["content"],
+          "mediaUrl": m["media_url"],
+          "mediaType": m["media_type"],
           "isMe": m["sender_id"] == widget.senderId,
           "time": _formatTime(m["created_at"]),
         };
@@ -74,6 +76,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final formatted = data.map<Map<String, dynamic>>((m) {
       return {
         "text": m["content"],
+        "mediaUrl": m["media_url"],
+        "mediaType": m["media_type"],
         "isMe": m["sender_id"] == widget.senderId,
         "time": _formatTime(m["created_at"]),
       };
@@ -109,6 +113,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add({
         "text": text,
         "isMe": true,
+        "mediaUrl": null,
+        "mediaType": null,
         "time": _formatTime(DateTime.now().toString()),
       });
     });
@@ -139,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // BUBBLE UI
+  // BUBBLE
   // ----------------------------------------------------------
   Widget _bubble(Map<String, dynamic> msg) {
     final isMe = msg["isMe"];
@@ -153,19 +159,12 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Container(
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: isMe ? const Color(0xffdcf8c6) : Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft:
-                    isMe ? const Radius.circular(16) : const Radius.circular(4),
-                bottomRight:
-                    isMe ? const Radius.circular(4) : const Radius.circular(16),
-              ),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Text(msg["text"], style: const TextStyle(fontSize: 16)),
+            child: _buildMessageContent(msg),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 12, left: 12),
@@ -176,6 +175,28 @@ class _ChatScreenState extends State<ChatScreen> {
           )
         ],
       ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // TEXT OR IMAGE LOGIC
+  // ----------------------------------------------------------
+  Widget _buildMessageContent(Map<String, dynamic> msg) {
+    if (msg["mediaType"] == "image" && msg["mediaUrl"] != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Image.network(
+          msg["mediaUrl"],
+          width: 220,
+          height: 220,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+
+    return Text(
+      msg["text"] ?? "",
+      style: const TextStyle(fontSize: 16),
     );
   }
 
@@ -237,21 +258,14 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: TextField(
                 controller: _messageController,
-                maxLines: 4,
                 minLines: 1,
+                maxLines: 4,
                 decoration: const InputDecoration(
                   hintText: "Message",
                   border: InputBorder.none,
                 ),
               ),
             ),
-          ),
-
-          IconButton(
-            icon: Icon(Icons.mic, color: _turquoise),
-            onPressed: () {
-              // Şimdilik boş – sonra voice record ekleriz
-            },
           ),
 
           GestureDetector(
@@ -267,7 +281,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // MEDIA SHEET
+  // MEDIA PICKER SHEET
   // ----------------------------------------------------------
   void _openMediaSheet() {
     showModalBottomSheet(
@@ -282,9 +296,8 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _mediaOption(Icons.camera_alt, "Camera", Colors.orange, _captureImage),
+              _mediaOption(Icons.camera_alt, "Camera", Colors.cyan, _captureImage),
               _mediaOption(Icons.photo, "Gallery", Colors.purple, _pickImage),
-              // İstersen burada File/Audio ikonlarını bırakıp onTap'e sadece snackbar koyabiliriz
             ],
           ),
         );
@@ -315,12 +328,11 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // IMAGE PICK
+  // IMAGE PICK LOGIC
   // ----------------------------------------------------------
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
-
     if (picked == null) return;
 
     final ok = await ChatService().uploadMedia(
@@ -336,7 +348,6 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _captureImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.camera);
-
     if (picked == null) return;
 
     final ok = await ChatService().uploadMedia(
