@@ -36,4 +36,18 @@ class ApiService {
     );
     return Map<String, dynamic>.from(res.data);
   }
+  // -------------------------------------------------------------
+// AI Prediction → /predict
+// -------------------------------------------------------------
+  Future<Map<String, dynamic>> predictMessage(String text) async {
+    final res = await _dio.post(
+      "/predict",
+      data: {"text": text},
+    );
+
+    return Map<String, dynamic>.from(res.data);
+  }
+
+
+
 }

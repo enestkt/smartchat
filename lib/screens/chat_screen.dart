@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/chat_service.dart';
 import 'package:image_picker/image_picker.dart';
+import '../services/api_service.dart';
+import '../services/chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final int senderId;
@@ -25,6 +27,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   List<Map<String, dynamic>> _messages = [];
   Timer? _pollingTimer;
+
+  Map<String, dynamic>? _analysis;      // 🔥 yeni eklendi
+  Timer? _typingTimer;                  // 🔥 yeni eklendi
 
   Color get _turquoise => const Color(0xFF008F9C);
 
@@ -97,6 +102,31 @@ class _ChatScreenState extends State<ChatScreen> {
       return "";
     }
   }
+  void _handleTyping(String text) {
+    // Önceki timer çalışıyorsa iptal et
+    if (_typingTimer != null) {
+      _typingTimer!.cancel();
+    }
+
+    // 1 saniye bekleyip /predict çağır
+    _typingTimer = Timer(const Duration(seconds: 1), () async {
+      if (text.trim().isEmpty) {
+        setState(() => _analysis = null);
+        return;
+      }
+
+      try {
+        final result = await ApiService().predictMessage(text);
+
+        setState(() {
+          _analysis = result; // Gelen AI analizini state'e yaz
+        });
+      } catch (e) {
+        print("PREDICT ERROR: $e");
+      }
+    });
+  }
+
 
   // ----------------------------------------------------------
   // SEND MESSAGE
@@ -105,6 +135,12 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
+    // 🔥 AI panelini temizle
+    setState(() {
+      _analysis = null;
+    });
+
+    // Mesajı ekrana ekle
     setState(() {
       _messages.add({
         "text": text,
@@ -208,6 +244,11 @@ class _ChatScreenState extends State<ChatScreen> {
               itemBuilder: (context, i) => _bubble(_messages[i]),
             ),
           ),
+
+          // 🔥 AI FEEDBACK PANEL
+          if (_analysis != null) _aiPanel(),
+
+          // INPUT BAR
           _inputBar(),
         ],
       ),
@@ -243,6 +284,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   hintText: "Message",
                   border: InputBorder.none,
                 ),
+                onChanged: _handleTyping,
               ),
             ),
           ),
@@ -348,4 +390,53 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (ok) _loadMessages();
   }
+  Widget _aiPanel() {
+    if (_analysis == null) return const SizedBox();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "AI Analysis",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "• Style: ${_analysis!["style"]} "
+                "(${(_analysis!["style_confidence"] * 100).toStringAsFixed(1)}%)",
+            style: const TextStyle(fontSize: 14),
+          ),
+          Text(
+            "• Sentiment: ${_analysis!["sentiment"]} "
+                "(${(_analysis!["sentiment_confidence"] * 100).toStringAsFixed(1)}%)",
+            style: const TextStyle(fontSize: 14),
+          ),
+          Text(
+            "• Fixed: ${_analysis!["punctuation_fixed"]}",
+            style: const TextStyle(fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
 }
