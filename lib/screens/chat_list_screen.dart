@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../providers/auth_provider.dart';
 import '../services/chat_service.dart';
 import 'chat_screen.dart';
@@ -35,16 +36,37 @@ class _ChatListScreenState extends State<ChatListScreen> {
     });
   }
 
+  // 🔥 LOGOUT
+  Future<void> _logout() async {
+    const storage = FlutterSecureStorage();
+    await storage.deleteAll();
+
+    if (!mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      "/login",
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.orange[900],
+        backgroundColor: const Color(0xFF008F9C),
         title: const Text(
           "SmartChat",
           style: TextStyle(color: Colors.white, fontSize: 22),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: _logout,
+          )
+        ],
       ),
+
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : partners.isEmpty
@@ -67,7 +89,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       title: Text(
                         user["username"] ?? "Unknown",
                         style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       subtitle: Text(
                         user["last_message"] ?? "No messages yet.",
