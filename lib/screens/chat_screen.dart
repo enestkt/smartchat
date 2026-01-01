@@ -72,7 +72,7 @@ class _ChatScreenState extends State<ChatScreen> {
           "isMe": m["sender_id"] == widget.senderId,
           "time": _formatTime(m["created_at"]),
         };
-      }).toList();
+      }).toList().reversed.toList();
     });
 
     _scrollToBottom();
@@ -181,7 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // Mesajı ekrana ekle
     setState(() {
-      _messages.add({
+      _messages.insert(0, {
         "text": text,
         "isMe": true,
         "time": _formatTime(DateTime.now().toString()),
@@ -199,10 +199,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 150), () {
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0.0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -283,6 +283,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xffefeae2),
       appBar: AppBar(
         backgroundColor: _turquoise,
@@ -302,8 +303,13 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
+              reverse: true,
+              padding: const EdgeInsets.only(bottom: 12),
               itemCount: _messages.length,
-              itemBuilder: (context, i) => _bubble(_messages[i]),
+              itemBuilder: (context, i) {
+                final msg = _messages[i];
+                return _bubble(msg);
+              },
             ),
           ),
 
