@@ -31,6 +31,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic>? _analysis;      // 🔥 yeni eklendi
   Timer? _typingTimer;                  // 🔥 yeni eklendi
 
+  Map<String, dynamic>? _aiSuggestion; // /complete sonucu
+  bool _aiLoading = false;
+
+
   Color get _turquoise => const Color(0xFF008F9C);
 
   @override
@@ -107,12 +111,10 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
   void _handleTyping(String text) {
-    // Önceki timer çalışıyorsa iptal et
     if (_typingTimer != null) {
       _typingTimer!.cancel();
     }
 
-    // 1 saniye bekleyip /predict çağır
     _typingTimer = Timer(const Duration(seconds: 1), () async {
       if (text.trim().isEmpty) {
         setState(() => _analysis = null);
@@ -120,16 +122,50 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       try {
-        final result = await ApiService().predictMessage(text);
+        final result = await ApiService().predictMessage(
+          text: text,
+          senderId: widget.senderId,      // ✅ DOĞRU
+          receiverId: widget.receiverId,  // ✅ DOĞRU
+        );
 
         setState(() {
-          _analysis = result; // Gelen AI analizini state'e yaz
+          _analysis = result;
         });
       } catch (e) {
         print("PREDICT ERROR: $e");
       }
     });
   }
+
+  Future<void> _testComplete() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _aiLoading = true;
+      _aiSuggestion = null;
+    });
+
+    try {
+      final res = await ApiService().completeMessage(
+        text: text,
+        senderId: widget.senderId,
+        receiverId: widget.receiverId,
+        receiverUsername: widget.receiverName,
+      );
+
+      debugPrint("COMPLETE RESPONSE => $res");
+
+      setState(() {
+        _aiSuggestion = res;
+      });
+    } catch (e) {
+      debugPrint("COMPLETE ERROR => $e");
+    } finally {
+      setState(() => _aiLoading = false);
+    }
+  }
+
 
 
   // ----------------------------------------------------------
@@ -237,8 +273,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // BUILD
-  // ----------------------------------------------------------
+// BUILD
+// ----------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -258,6 +294,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          // -------------------------------
+          // MESSAGES
+          // -------------------------------
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -266,15 +305,109 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // 🔥 AI FEEDBACK PANEL
+          // -------------------------------
+          // 1️⃣ AI TYPING ANALYSIS (/predict)
+          // -------------------------------
           if (_analysis != null) _aiPanel(),
 
+          // -------------------------------
+          // 2️⃣ AI MESSAGE SUGGESTION (/complete)
+          // -------------------------------
+          if (_aiLoading)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: CircularProgressIndicator(),
+            ),
+
+          if (_aiSuggestion != null)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "AI Message Suggestion",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // 🔹 Tap → input’a yaz (ACCEPT sayılmaz)
+                  GestureDetector(
+                    onTap: () {
+                      final text = _aiSuggestion!["completion"];
+                      _messageController.text = text;
+                      _messageController.selection = TextSelection.fromPosition(
+                        TextPosition(offset: text.length),
+                      );
+                    },
+                    child: Text(
+                      _aiSuggestion!["completion"] ?? "",
+                      style: const TextStyle(fontSize: 15),
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // 🔹 ACCEPT / REJECT
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          await ApiService().updateSuggestionStatus(
+                            suggestionId: _aiSuggestion!["suggestion_id"],
+                            accepted: false,
+                          );
+                          setState(() => _aiSuggestion = null);
+                        },
+                        child: const Text("Reject"),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final text = _aiSuggestion!["completion"];
+
+                          // 1️⃣ Input alanına yaz
+                          _messageController.text = text;
+                          _messageController.selection = TextSelection.fromPosition(
+                            TextPosition(offset: text.length),
+                          );
+
+                          // 2️⃣ DB’ye ACCEPT gönder
+                          await ApiService().updateSuggestionStatus(
+                            suggestionId: _aiSuggestion!["suggestion_id"],
+                            accepted: true,
+                          );
+
+                          // 3️⃣ Paneli kapat
+                          setState(() => _aiSuggestion = null);
+                        },
+                        child: const Text("Accept"),
+                      ),
+
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+          // -------------------------------
           // INPUT BAR
+          // -------------------------------
           _inputBar(),
         ],
       ),
     );
   }
+
+
+
 
   // ----------------------------------------------------------
   // INPUT BAR
@@ -285,11 +418,13 @@ class _ChatScreenState extends State<ChatScreen> {
       color: Colors.white,
       child: Row(
         children: [
+          // ➕ MEDIA
           IconButton(
             icon: Icon(Icons.add, color: _turquoise),
             onPressed: _openMediaSheet,
           ),
 
+          // ✍️ TEXT INPUT
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
@@ -310,17 +445,26 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
+          // 🤖 AI TEST BUTTON (/complete)
+          IconButton(
+            icon: const Icon(Icons.smart_toy),
+            color: _turquoise,
+            onPressed: _aiLoading ? null : _testComplete,
+          ),
+
+          // 📤 SEND
           GestureDetector(
             onTap: _sendMessage,
             child: CircleAvatar(
               backgroundColor: _turquoise,
               child: const Icon(Icons.send, color: Colors.white, size: 20),
             ),
-          )
+          ),
         ],
       ),
     );
   }
+
 
   // ----------------------------------------------------------
   // MEDIA PICKER SHEET
@@ -422,32 +566,47 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             "AI Analysis",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[700],
-              fontSize: 14,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
-          Text(
-            "• Style: ${_analysis!["style"]} "
-                "(${(_analysis!["style_confidence"] * 100).toStringAsFixed(1)}%)",
-            style: const TextStyle(fontSize: 14),
-          ),
-          Text(
-            "• Sentiment: ${_analysis!["sentiment"]} "
-                "(${(_analysis!["sentiment_confidence"] * 100).toStringAsFixed(1)}%)",
-            style: const TextStyle(fontSize: 14),
-          ),
-          Text(
-            "• Fixed: ${_analysis!["punctuation_fixed"]}",
-            style: const TextStyle(fontSize: 14),
-          ),
+
+          // 🔥 MESAJ STİLİ (ANLIK)
+          if (_analysis!["style"] != null)
+            Text(
+              "• Message style: ${_analysis!["style"]}",
+              style: const TextStyle(fontSize: 14),
+            ),
+
+          // 🔥 İLİŞKİ STİLİ (KARAR)
+          if (_analysis!["relationship_style"] != null)
+            Text(
+              "• Conversation style: ${_analysis!["relationship_style"]}",
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+
+          // ✅ SENTIMENT
+          if (_analysis!["sentiment"] != null &&
+              _analysis!["sentiment_confidence"] != null)
+            Text(
+              "• Sentiment: ${_analysis!["sentiment"]} "
+                  "(${(_analysis!["sentiment_confidence"] * 100).toStringAsFixed(1)}%)",
+              style: const TextStyle(fontSize: 14),
+            ),
+
+          // ✅ PUNCTUATION
+          if (_analysis!["punctuation_fixed"] != null)
+            Text(
+              "• Fixed: ${_analysis!["punctuation_fixed"]}",
+              style: const TextStyle(fontSize: 14),
+            ),
         ],
       ),
     );
   }
+
+
+
 
 }
