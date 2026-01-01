@@ -25,170 +25,175 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            colors: [
-              Colors.orange.shade900,
-              Colors.orange.shade800,
-              Colors.orange.shade400,
-            ],
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 80),
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("SmartChat",
-                      style: TextStyle(color: Colors.white, fontSize: 40)),
-                  SizedBox(height: 10),
-                  Text("Welcome Back",
-                      style: TextStyle(color: Colors.white, fontSize: 18)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(60),
-                    topRight: Radius.circular(60),
+      backgroundColor: const Color(0xFFF6F7FB),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+
+                /// LOGO
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade500,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.chat_bubble_outline,
+                    color: Colors.white,
+                    size: 36,
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(30),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 60),
 
-                        /// INPUT BOX
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color.fromRGBO(225, 95, 27, .3),
-                                blurRadius: 20,
-                                offset: Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              // EMAIL
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Colors.grey.shade200,
-                                    ),
-                                  ),
-                                ),
-                                child: TextField(
-                                  controller: emailC,
-                                  decoration: const InputDecoration(
-                                    hintText: "Email",
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
+                const SizedBox(height: 20),
 
-                              // PASSWORD
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                child: TextField(
-                                  controller: passC,
-                                  obscureText: true,
-                                  decoration: const InputDecoration(
-                                    hintText: "Password",
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                const Text(
+                  "SmartChat",
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                  ),
+                ),
 
-                        const SizedBox(height: 40),
+                const SizedBox(height: 6),
 
-                        /// LOGIN BUTTON
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange[900],
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                              ),
+                const Text(
+                  "AI-powered messaging",
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 15,
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                /// CARD
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 24,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _inputField(
+                        controller: emailC,
+                        hint: "Email",
+                        icon: Icons.email_outlined,
+                      ),
+                      const SizedBox(height: 16),
+                      _inputField(
+                        controller: passC,
+                        hint: "Password",
+                        icon: Icons.lock_outline,
+                        obscure: true,
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal.shade500,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            onPressed: auth.isLoading
-                                ? null
-                                : () async {
-                                    final ok = await context
-                                        .read<AuthProvider>()
-                                        .login(
-                                          emailC.text.trim(),
-                                          passC.text.trim(),
-                                        );
-
-                                    if (!mounted) return;
-
-                                    if (ok) {
-                                      Navigator.pushReplacementNamed(
-                                          context, '/chats');
-                                    } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                "Invalid email or password!")),
+                          ),
+                          onPressed: auth.isLoading
+                              ? null
+                              : () async {
+                                  final ok = await context
+                                      .read<AuthProvider>()
+                                      .login(
+                                        emailC.text.trim(),
+                                        passC.text.trim(),
                                       );
-                                    }
-                                  },
-                            child: auth.isLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white)
-                                : const Text(
-                                    "Login",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+
+                                  if (!mounted) return;
+
+                                  if (ok) {
+                                    Navigator.pushReplacementNamed(
+                                        context, '/chats');
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            "Invalid email or password"),
+                                      ),
+                                    );
+                                  }
+                                },
+                          child: auth.isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white)
+                              : const Text(
+                                  "Login",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
                                   ),
-                          ),
+                                ),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                        const SizedBox(height: 30),
+                const SizedBox(height: 28),
 
-                        /// SIGNUP LINK
-                        TextButton(
-                          onPressed: () =>
-                              Navigator.pushNamed(context, '/signup'),
-                          child: const Text(
-                            "Don’t have an account? Sign up",
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ),
-                      ],
+                /// SIGN UP
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/signup'),
+                  child: const Text(
+                    "Create a new account",
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: 14,
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _inputField({
+    required TextEditingController controller,
+    required String hint,
+    required IconData icon,
+    bool obscure = false,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon),
+        hintText: hint,
+        filled: true,
+        fillColor: const Color(0xFFF2F3F7),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
         ),
       ),
     );

@@ -280,135 +280,168 @@ class _ChatScreenState extends State<ChatScreen> {
 // BUILD
 // ----------------------------------------------------------
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: true, // Klavyenin alanı daraltmasını sağlar
       backgroundColor: const Color(0xffefeae2),
       appBar: AppBar(
         backgroundColor: _turquoise,
+        elevation: 1,
+        titleSpacing: 0,
         title: Row(
           children: [
-            const CircleAvatar(child: Icon(Icons.person)),
-            const SizedBox(width: 10),
-            Text(widget.receiverName, style: const TextStyle(color: Colors.white)),
+            const CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.white24,
+              child: Icon(Icons.person, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  widget.receiverName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  "online",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.videocam, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.call, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onPressed: () {},
+          ),
+        ],
       ),
+
       body: Column(
         children: [
-          // -------------------------------
-          // MESSAGES
-          // -------------------------------
+          // 1. ÜST KISIM: Mesajlar ve üzerine binen AI Panelleri
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              reverse: true,
-              padding: const EdgeInsets.only(bottom: 12),
-              itemCount: _messages.length,
-              itemBuilder: (context, i) {
-                final msg = _messages[i];
-                return _bubble(msg);
-              },
+            child: Stack(
+              children: [
+                // Mesaj Listesi
+                ListView.builder(
+                  controller: _scrollController,
+                  reverse: true,
+                  // ÖNEMLİ: AI Paneli açıkken mesajlar arkada kalmasın diye alt boşluk veriyoruz
+                  padding: EdgeInsets.only(
+                    bottom: (_analysis != null || _aiSuggestion != null) ? 180 : 12,
+                    top: 12,
+                  ),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, i) {
+                    final msg = _messages[i];
+                    return _bubble(msg);
+                  },
+                ),
+
+                // 2. YÜZER AI PANELLERİ (Positioned ile listenin en altına sabitliyoruz)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // AI Analiz Paneli
+                      if (_analysis != null) _aiPanel(),
+                      
+                      // AI Yükleniyor Göstergesi
+                      if (_aiLoading)
+                        const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: CircularProgressIndicator(),
+                        ),
+
+                      // AI Öneri Paneli
+                      if (_aiSuggestion != null) _buildAiSuggestionFloatingPanel(),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // -------------------------------
-          // 1️⃣ AI TYPING ANALYSIS (/predict)
-          // -------------------------------
-          if (_analysis != null) _aiPanel(),
-
-          // -------------------------------
-          // 2️⃣ AI MESSAGE SUGGESTION (/complete)
-          // -------------------------------
-          if (_aiLoading)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: CircularProgressIndicator(),
-            ),
-
-          if (_aiSuggestion != null)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade50,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "AI Message Suggestion",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-
-                  // 🔹 Tap → input’a yaz (ACCEPT sayılmaz)
-                  GestureDetector(
-                    onTap: () {
-                      final text = _aiSuggestion!["completion"];
-                      _messageController.text = text;
-                      _messageController.selection = TextSelection.fromPosition(
-                        TextPosition(offset: text.length),
-                      );
-                    },
-                    child: Text(
-                      _aiSuggestion!["completion"] ?? "",
-                      style: const TextStyle(fontSize: 15),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // 🔹 ACCEPT / REJECT
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () async {
-                          await ApiService().updateSuggestionStatus(
-                            suggestionId: _aiSuggestion!["suggestion_id"],
-                            accepted: false,
-                          );
-                          setState(() => _aiSuggestion = null);
-                        },
-                        child: const Text("Reject"),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final text = _aiSuggestion!["completion"];
-
-                          // 1️⃣ Input alanına yaz
-                          _messageController.text = text;
-                          _messageController.selection = TextSelection.fromPosition(
-                            TextPosition(offset: text.length),
-                          );
-
-                          // 2️⃣ DB’ye ACCEPT gönder
-                          await ApiService().updateSuggestionStatus(
-                            suggestionId: _aiSuggestion!["suggestion_id"],
-                            accepted: true,
-                          );
-
-                          // 3️⃣ Paneli kapat
-                          setState(() => _aiSuggestion = null);
-                        },
-                        child: const Text("Accept"),
-                      ),
-
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-          // -------------------------------
-          // INPUT BAR
-          // -------------------------------
+          // 3. ALT KISIM: Giriş Çubuğu (Yeri hiç değişmez, klavye kapanmaz)
           _inputBar(),
+        ],
+      ),
+    );
+  }
+
+  // AI Öneri panelini temiz görünmesi için ayrı bir widget olarak tanımladım
+  Widget _buildAiSuggestionFloatingPanel() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade50.withOpacity(0.98), // Hafif saydam ve şık
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, -2))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("AI Message Suggestion", style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: () {
+              final text = _aiSuggestion!["completion"];
+              _messageController.text = text;
+              _messageController.selection = TextSelection.fromPosition(TextPosition(offset: text.length));
+            },
+            child: Text(_aiSuggestion!["completion"] ?? "", style: const TextStyle(fontSize: 15)),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () async {
+                  await ApiService().updateSuggestionStatus(suggestionId: _aiSuggestion!["suggestion_id"], accepted: false);
+                  setState(() => _aiSuggestion = null);
+                },
+                child: const Text("Reject"),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () async {
+                  final text = _aiSuggestion!["completion"];
+                  _messageController.text = text;
+                  await ApiService().updateSuggestionStatus(suggestionId: _aiSuggestion!["suggestion_id"], accepted: true);
+                  setState(() => _aiSuggestion = null);
+                },
+                child: const Text("Accept"),
+              ),
+            ],
+          ),
         ],
       ),
     );
