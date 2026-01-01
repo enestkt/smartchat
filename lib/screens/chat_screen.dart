@@ -33,6 +33,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _loadMessages();
 
+    // POLLING
     _pollingTimer = Timer.periodic(
       const Duration(seconds: 2),
       (_) => _checkNewMessages(),
@@ -48,7 +49,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // FETCH MESSAGES
+  // LOAD MESSAGES
   // ----------------------------------------------------------
   Future<void> _loadMessages() async {
     final data = await ChatService()
@@ -58,8 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages = data.map<Map<String, dynamic>>((m) {
         return {
           "text": m["content"],
-          "mediaUrl": m["media_url"],
-          "mediaType": m["media_type"],
+          "image": m["image_url"],
           "isMe": m["sender_id"] == widget.senderId,
           "time": _formatTime(m["created_at"]),
         };
@@ -70,14 +70,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _checkNewMessages() async {
-    final data = await ChatService()
+    final latest = await ChatService()
         .fetchMessages(widget.senderId, widget.receiverId);
 
-    final formatted = data.map<Map<String, dynamic>>((m) {
+    final formatted = latest.map<Map<String, dynamic>>((m) {
       return {
         "text": m["content"],
-        "mediaUrl": m["media_url"],
-        "mediaType": m["media_type"],
+         "image": m["image_url"], 
         "isMe": m["sender_id"] == widget.senderId,
         "time": _formatTime(m["created_at"]),
       };
@@ -113,8 +112,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add({
         "text": text,
         "isMe": true,
-        "mediaUrl": null,
-        "mediaType": null,
         "time": _formatTime(DateTime.now().toString()),
       });
     });
@@ -129,9 +126,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ----------------------------------------------------------
-  // SCROLL
-  // ----------------------------------------------------------
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 150), () {
       if (_scrollController.hasClients) {
@@ -145,58 +139,42 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // BUBBLE
+  // MESSAGE BUBBLE
   // ----------------------------------------------------------
   Widget _bubble(Map<String, dynamic> msg) {
     final isMe = msg["isMe"];
 
     return Align(
-      alignment:
-          isMe ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
-        crossAxisAlignment:
-            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Container(
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isMe ? const Color(0xffdcf8c6) : Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+                bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
+              ),
             ),
-            child: _buildMessageContent(msg),
+            child: msg["image"] !=null
+              ? Image.network(
+                msg["image"],
+                width: 200,
+                fit:BoxFit.cover,
+                )
+                  : Text(msg["text"], style: const TextStyle(fontSize: 16)),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 12, left: 12),
-            child: Text(
-              msg["time"],
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
+            child: Text(msg["time"], style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           )
         ],
       ),
-    );
-  }
-
-  // ----------------------------------------------------------
-  // TEXT OR IMAGE LOGIC
-  // ----------------------------------------------------------
-  Widget _buildMessageContent(Map<String, dynamic> msg) {
-    if (msg["mediaType"] == "image" && msg["mediaUrl"] != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.network(
-          msg["mediaUrl"],
-          width: 220,
-          height: 220,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-
-    return Text(
-      msg["text"] ?? "",
-      style: const TextStyle(fontSize: 16),
     );
   }
 
@@ -213,10 +191,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             const CircleAvatar(child: Icon(Icons.person)),
             const SizedBox(width: 10),
-            Text(
-              widget.receiverName,
-              style: const TextStyle(color: Colors.white),
-            ),
+            Text(widget.receiverName, style: const TextStyle(color: Colors.white)),
           ],
         ),
       ),
@@ -258,8 +233,8 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: TextField(
                 controller: _messageController,
-                minLines: 1,
                 maxLines: 4,
+                minLines: 1,
                 decoration: const InputDecoration(
                   hintText: "Message",
                   border: InputBorder.none,
@@ -281,7 +256,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // MEDIA PICKER SHEET
+  // MEDIA SHEET
   // ----------------------------------------------------------
   void _openMediaSheet() {
     showModalBottomSheet(
@@ -292,7 +267,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       builder: (_) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -328,35 +303,63 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // IMAGE PICK LOGIC
+  // IMAGE PICK
   // ----------------------------------------------------------
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
+
     if (picked == null) return;
 
-    final ok = await ChatService().uploadMedia(
+    // Önce ekranda hemen göster (local path)
+    setState(() {
+      _messages.add({
+        "text": "",
+        "image": picked.path,  // 🔥 TEMP DEĞİL → gerçek local dosya yolu
+        "isMe": true,
+        "time": _formatTime(DateTime.now().toString())
+      });
+    });
+
+    _scrollToBottom();
+
+    // Sonra backend’e yükle
+    await ChatService().uploadMedia(
       senderId: widget.senderId,
       receiverId: widget.receiverId,
       filePath: picked.path,
       mediaType: "image",
     );
 
-    if (ok) _loadMessages();
-  }
+  // Backend URL geldikten sonra doğru URL ile yeniden yükle
+  _loadMessages();
+}
 
   Future<void> _captureImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.camera);
+
     if (picked == null) return;
 
-    final ok = await ChatService().uploadMedia(
+      setState(() {
+        _messages.add({
+          "text": "",
+          "image": picked.path,
+          "isMe": true,
+          "time": _formatTime(DateTime.now().toString())
+        });
+      });
+
+      _scrollToBottom();
+
+    await ChatService().uploadMedia(
       senderId: widget.senderId,
       receiverId: widget.receiverId,
       filePath: picked.path,
       mediaType: "image",
     );
 
-    if (ok) _loadMessages();
+    _loadMessages();
   }
+
 }

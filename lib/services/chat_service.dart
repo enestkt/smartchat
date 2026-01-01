@@ -56,7 +56,7 @@ class ChatService {
   }
 
   // -------------------------------------------------------------
-  // 🔥 MEDIA UPLOAD (image, file, audio, video)
+  //  MEDIA UPLOAD (image, file, audio, video)
   // -------------------------------------------------------------
   Future<bool> uploadMedia({
     required int senderId,

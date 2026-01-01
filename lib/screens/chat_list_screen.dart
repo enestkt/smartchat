@@ -36,7 +36,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     });
   }
 
-  // 🔥 LOGOUT
+  //  LOGOUT
   Future<void> _logout() async {
     const storage = FlutterSecureStorage();
     await storage.deleteAll();
