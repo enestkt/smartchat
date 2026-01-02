@@ -72,7 +72,7 @@ class _ChatScreenState extends State<ChatScreen> {
           "isMe": m["sender_id"] == widget.senderId,
           "time": _formatTime(m["created_at"]),
         };
-      }).toList().reversed.toList();
+      }).toList();
     });
 
     _scrollToBottom();
@@ -181,7 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // Mesajı ekrana ekle
     setState(() {
-      _messages.insert(0, {
+      _messages.add({
         "text": text,
         "isMe": true,
         "time": _formatTime(DateTime.now().toString()),
@@ -202,7 +202,7 @@ class _ChatScreenState extends State<ChatScreen> {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          0.0,
+          _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -387,6 +387,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
 
           // 3. ALT KISIM: Giriş Çubuğu (Yeri hiç değişmez, klavye kapanmaz)
+          
           _inputBar(),
         ],
       ),
