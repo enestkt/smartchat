@@ -17,6 +17,9 @@ dependencies:
   # 🔄 State management
   provider: ^6.1.2
 
+  # ✍🏻 Fonts
+  google_fonts: ^6.2.1
+
   # 🖼 Kamera / Galeri
   image_picker: ^1.0.7
 

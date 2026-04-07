@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:smartchat/screens/search_user_screen.dart';
 import 'providers/auth_provider.dart';
@@ -26,7 +27,10 @@ class SmartChatApp extends StatelessWidget {
       title: 'SmartChat',
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
+        colorSchemeSeed: const Color(0xFF008F9C),
+        textTheme: GoogleFonts.interTextTheme(
+          Theme.of(context).textTheme,
+        ),
       ),
       //initialRoute: '/chat',
       home: LoginScreen(),

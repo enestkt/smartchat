@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 
 class ApiService {
   static const String baseUrl =
-      "https://smartchatgraduation.onrender.com";
+      "http://10.0.2.2:5000";
 
   final Dio _dio = Dio(
     BaseOptions(
