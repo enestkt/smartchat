@@ -42,6 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _loadMessages();
 
+    // POLLING
     _pollingTimer = Timer.periodic(
       const Duration(seconds: 2),
       (_) => _checkNewMessages(),
@@ -57,7 +58,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // FETCH MESSAGES
+  // LOAD MESSAGES
   // ----------------------------------------------------------
   Future<void> _loadMessages() async {
     final data = await ChatService()
@@ -67,8 +68,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages = data.map<Map<String, dynamic>>((m) {
         return {
           "text": m["content"],
-          "mediaUrl": m["media_url"],
-          "mediaType": m["media_type"],
+          "image": m["image_url"],
           "isMe": m["sender_id"] == widget.senderId,
           "time": _formatTime(m["created_at"]),
         };
@@ -79,14 +79,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _checkNewMessages() async {
-    final data = await ChatService()
+    final latest = await ChatService()
         .fetchMessages(widget.senderId, widget.receiverId);
 
-    final formatted = data.map<Map<String, dynamic>>((m) {
+    final formatted = latest.map<Map<String, dynamic>>((m) {
       return {
         "text": m["content"],
-        "mediaUrl": m["media_url"],
-        "mediaType": m["media_type"],
+         "image": m["image_url"], 
         "isMe": m["sender_id"] == widget.senderId,
         "time": _formatTime(m["created_at"]),
       };
@@ -185,8 +184,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add({
         "text": text,
         "isMe": true,
-        "mediaUrl": null,
-        "mediaType": null,
         "time": _formatTime(DateTime.now().toString()),
       });
     });
@@ -201,11 +198,8 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ----------------------------------------------------------
-  // SCROLL
-  // ----------------------------------------------------------
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 150), () {
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -217,33 +211,39 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // BUBBLE
+  // MESSAGE BUBBLE
   // ----------------------------------------------------------
   Widget _bubble(Map<String, dynamic> msg) {
     final isMe = msg["isMe"];
 
     return Align(
-      alignment:
-          isMe ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
-        crossAxisAlignment:
-            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Container(
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isMe ? const Color(0xffdcf8c6) : Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(16),
+                topRight: const Radius.circular(16),
+                bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+                bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
+              ),
             ),
-            child: _buildMessageContent(msg),
+            child: msg["image"] !=null
+              ? Image.network(
+                msg["image"],
+                width: 200,
+                fit:BoxFit.cover,
+                )
+                  : Text(msg["text"], style: const TextStyle(fontSize: 16)),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 12, left: 12),
-            child: Text(
-              msg["time"],
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
+            child: Text(msg["time"], style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           )
         ],
       ),
@@ -251,6 +251,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
+
+  // BUILD
+  // ----------------------------------------------------------
+
   // TEXT OR IMAGE LOGIC
   // ----------------------------------------------------------
   Widget _buildMessageContent(Map<String, dynamic> msg) {
@@ -275,132 +279,170 @@ class _ChatScreenState extends State<ChatScreen> {
   // ----------------------------------------------------------
 // BUILD
 // ----------------------------------------------------------
-  @override
+
+@override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // Klavyenin alanı daraltmasını sağlar
       backgroundColor: const Color(0xffefeae2),
       appBar: AppBar(
         backgroundColor: _turquoise,
+        elevation: 1,
+        titleSpacing: 0,
         title: Row(
           children: [
-            const CircleAvatar(child: Icon(Icons.person)),
-            const SizedBox(width: 10),
-            Text(
-              widget.receiverName,
-              style: const TextStyle(color: Colors.white),
+            const CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.white24,
+              child: Icon(Icons.person, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  widget.receiverName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  "online",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.videocam, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.call, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onPressed: () {},
+          ),
+        ],
       ),
+
       body: Column(
         children: [
-          // -------------------------------
-          // MESSAGES
-          // -------------------------------
+          // 1. ÜST KISIM: Mesajlar ve üzerine binen AI Panelleri
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              itemCount: _messages.length,
-              itemBuilder: (context, i) => _bubble(_messages[i]),
+            child: Stack(
+              children: [
+                // Mesaj Listesi
+                ListView.builder(
+                  controller: _scrollController,
+                  reverse: true,
+                  // ÖNEMLİ: AI Paneli açıkken mesajlar arkada kalmasın diye alt boşluk veriyoruz
+                  padding: EdgeInsets.only(
+                    bottom: (_analysis != null || _aiSuggestion != null) ? 180 : 12,
+                    top: 12,
+                  ),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, i) {
+                    final msg = _messages[i];
+                    return _bubble(msg);
+                  },
+                ),
+
+                // 2. YÜZER AI PANELLERİ (Positioned ile listenin en altına sabitliyoruz)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // AI Analiz Paneli
+                      if (_analysis != null) _aiPanel(),
+                      
+                      // AI Yükleniyor Göstergesi
+                      if (_aiLoading)
+                        const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: CircularProgressIndicator(),
+                        ),
+
+                      // AI Öneri Paneli
+                      if (_aiSuggestion != null) _buildAiSuggestionFloatingPanel(),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // -------------------------------
-          // 1️⃣ AI TYPING ANALYSIS (/predict)
-          // -------------------------------
-          if (_analysis != null) _aiPanel(),
-
-          // -------------------------------
-          // 2️⃣ AI MESSAGE SUGGESTION (/complete)
-          // -------------------------------
-          if (_aiLoading)
-            const Padding(
-              padding: EdgeInsets.all(8),
-              child: CircularProgressIndicator(),
-            ),
-
-          if (_aiSuggestion != null)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blueGrey.shade50,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "AI Message Suggestion",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 6),
-
-                  // 🔹 Tap → input’a yaz (ACCEPT sayılmaz)
-                  GestureDetector(
-                    onTap: () {
-                      final text = _aiSuggestion!["completion"];
-                      _messageController.text = text;
-                      _messageController.selection = TextSelection.fromPosition(
-                        TextPosition(offset: text.length),
-                      );
-                    },
-                    child: Text(
-                      _aiSuggestion!["completion"] ?? "",
-                      style: const TextStyle(fontSize: 15),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // 🔹 ACCEPT / REJECT
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () async {
-                          await ApiService().updateSuggestionStatus(
-                            suggestionId: _aiSuggestion!["suggestion_id"],
-                            accepted: false,
-                          );
-                          setState(() => _aiSuggestion = null);
-                        },
-                        child: const Text("Reject"),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final text = _aiSuggestion!["completion"];
-
-                          // 1️⃣ Input alanına yaz
-                          _messageController.text = text;
-                          _messageController.selection = TextSelection.fromPosition(
-                            TextPosition(offset: text.length),
-                          );
-
-                          // 2️⃣ DB’ye ACCEPT gönder
-                          await ApiService().updateSuggestionStatus(
-                            suggestionId: _aiSuggestion!["suggestion_id"],
-                            accepted: true,
-                          );
-
-                          // 3️⃣ Paneli kapat
-                          setState(() => _aiSuggestion = null);
-                        },
-                        child: const Text("Accept"),
-                      ),
-
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-          // -------------------------------
-          // INPUT BAR
-          // -------------------------------
+          // 3. ALT KISIM: Giriş Çubuğu (Yeri hiç değişmez, klavye kapanmaz)
+          
           _inputBar(),
+        ],
+      ),
+    );
+  }
+
+  // AI Öneri panelini temiz görünmesi için ayrı bir widget olarak tanımladım
+  Widget _buildAiSuggestionFloatingPanel() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.shade50.withOpacity(0.98), // Hafif saydam ve şık
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, -2))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("AI Message Suggestion", style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          GestureDetector(
+            onTap: () {
+              final text = _aiSuggestion!["completion"];
+              _messageController.text = text;
+              _messageController.selection = TextSelection.fromPosition(TextPosition(offset: text.length));
+            },
+            child: Text(_aiSuggestion!["completion"] ?? "", style: const TextStyle(fontSize: 15)),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () async {
+                  await ApiService().updateSuggestionStatus(suggestionId: _aiSuggestion!["suggestion_id"], accepted: false);
+                  setState(() => _aiSuggestion = null);
+                },
+                child: const Text("Reject"),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () async {
+                  final text = _aiSuggestion!["completion"];
+                  _messageController.text = text;
+                  await ApiService().updateSuggestionStatus(suggestionId: _aiSuggestion!["suggestion_id"], accepted: true);
+                  setState(() => _aiSuggestion = null);
+                },
+                child: const Text("Accept"),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -434,8 +476,8 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: TextField(
                 controller: _messageController,
-                minLines: 1,
                 maxLines: 4,
+                minLines: 1,
                 decoration: const InputDecoration(
                   hintText: "Message",
                   border: InputBorder.none,
@@ -467,7 +509,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
 
   // ----------------------------------------------------------
-  // MEDIA PICKER SHEET
+  // MEDIA SHEET
   // ----------------------------------------------------------
   void _openMediaSheet() {
     showModalBottomSheet(
@@ -478,7 +520,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       builder: (_) {
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -514,37 +556,66 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   // ----------------------------------------------------------
-  // IMAGE PICK LOGIC
+  // IMAGE PICK
   // ----------------------------------------------------------
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
+
     if (picked == null) return;
 
-    final ok = await ChatService().uploadMedia(
+    // Önce ekranda hemen göster (local path)
+    setState(() {
+      _messages.add({
+        "text": "",
+        "image": picked.path,  // 🔥 TEMP DEĞİL → gerçek local dosya yolu
+        "isMe": true,
+        "time": _formatTime(DateTime.now().toString())
+      });
+    });
+
+    _scrollToBottom();
+
+    // Sonra backend’e yükle
+    await ChatService().uploadMedia(
       senderId: widget.senderId,
       receiverId: widget.receiverId,
       filePath: picked.path,
       mediaType: "image",
     );
 
-    if (ok) _loadMessages();
-  }
+  // Backend URL geldikten sonra doğru URL ile yeniden yükle
+  _loadMessages();
+}
 
   Future<void> _captureImage() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.camera);
+
     if (picked == null) return;
 
-    final ok = await ChatService().uploadMedia(
+      setState(() {
+        _messages.add({
+          "text": "",
+          "image": picked.path,
+          "isMe": true,
+          "time": _formatTime(DateTime.now().toString())
+        });
+      });
+
+      _scrollToBottom();
+
+    await ChatService().uploadMedia(
       senderId: widget.senderId,
       receiverId: widget.receiverId,
       filePath: picked.path,
       mediaType: "image",
     );
 
-    if (ok) _loadMessages();
+    _loadMessages();
   }
+
+
   Widget _aiPanel() {
     if (_analysis == null) return const SizedBox();
 
@@ -605,6 +676,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
 
 
 

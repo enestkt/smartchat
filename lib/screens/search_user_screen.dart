@@ -17,13 +17,15 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   String? error;
   Map<String, dynamic>? foundUser;
 
+  Color get _primary => const Color(0xFF008F9C);
+
   Future<void> _searchUser() async {
     final username = searchC.text.trim();
 
     if (username.isEmpty) {
       setState(() {
         foundUser = null;
-        error = "Please enter a username.";
+        error = "Please enter a username";
       });
       return;
     }
@@ -39,7 +41,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
     setState(() {
       isLoading = false;
       if (result == null) {
-        error = "No user found.";
+        error = "No user found";
       } else {
         foundUser = result;
       }
@@ -48,55 +50,75 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final senderId = context.read<AuthProvider>().userId;
+    final senderId = context.read<AuthProvider>().userId!;
 
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: Colors.orange[900],
+        backgroundColor: _primary,
         title: const Text(
           "Search User",
           style: TextStyle(color: Colors.white),
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 🔍 Search Box
-            TextField(
-              controller: searchC,
-              onSubmitted: (_) => _searchUser(),
-              decoration: InputDecoration(
-                hintText: "Enter username...",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _searchUser,
+            // 🔍 SEARCH BOX (KART GİBİ)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: searchC,
+                onSubmitted: (_) => _searchUser(),
+                decoration: InputDecoration(
+                  hintText: "Search by username",
+                  border: InputBorder.none,
+                  icon: Icon(Icons.search, color: _primary),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onPressed: _searchUser,
+                  ),
                 ),
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
 
-            // ⏳ Loading
+            // ⏳ LOADING
             if (isLoading)
               const CircularProgressIndicator(),
 
-            // ❌ Error message
+            // ❌ ERROR
             if (!isLoading && error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Text(
-                  error!,
-                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                padding: const EdgeInsets.only(top: 40),
+                child: Column(
+                  children: [
+                    Icon(Icons.search_off, size: 60, color: Colors.grey[400]),
+                    const SizedBox(height: 12),
+                    Text(
+                      error!,
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  ],
                 ),
               ),
 
-            // 👤 User card
+            // 👤 FOUND USER CARD
             if (!isLoading && foundUser != null)
-              _userCard(foundUser!, senderId!),
+              _userCard(foundUser!, senderId),
           ],
         ),
       ),
@@ -104,20 +126,36 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 
   Widget _userCard(Map<String, dynamic> user, int currentUser) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      margin: const EdgeInsets.only(top: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
       child: ListTile(
-        leading: const CircleAvatar(
-          radius: 24,
-          child: Icon(Icons.person),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        leading: CircleAvatar(
+          radius: 26,
+          backgroundColor: _primary.withOpacity(0.15),
+          child: Icon(Icons.person, color: _primary),
         ),
         title: Text(
           user["username"],
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        subtitle: Text("ID: ${user['id']}"),
-        trailing: const Icon(Icons.arrow_forward_ios),
+        subtitle: const Text("Tap to start chat"),
+        trailing: Icon(Icons.chat, color: _primary),
         onTap: () {
           Navigator.push(
             context,
