@@ -9,46 +9,97 @@ class ChatService {
   ));
 
   /// Kullanıcı arama
-  Future<Map<String, dynamic>?> searchUser(String username) async {
+   Future<Map<String, dynamic>?> searchUser(String username) async {
     try {
       final res = await _dio.get("/user_by_username/$username");
+      final data = Map<String, dynamic>.from(res.data);
 
-      if (res.data["success"] == true) {
-        return res.data["user"];
+      if (data["success"] == true) {
+        if (data["user"] is Map<String, dynamic>) {
+          return Map<String, dynamic>.from(data["user"]);
+        }
+        if (data["data"] is Map<String, dynamic>) {
+          return Map<String, dynamic>.from(data["data"]);
+        }
       }
+
       return null;
-    } catch (_) {
+    } catch (e) {
+      print("SEARCH USER ERROR: $e");
       return null;
     }
   }
 
   /// Mesaj yükleme
   Future<List<dynamic>> fetchMessages(int senderId, int receiverId) async {
-    final res = await _dio.get(
-      "/messages",
-      queryParameters: {
-        "sender_id": senderId,
-        "receiver_id": receiverId,
-      },
-    );
-    return res.data["messages"] ?? [];
+    try {
+      final res = await _dio.get(
+        "/messages",
+        queryParameters: {
+          "sender_id": senderId,
+          "receiver_id": receiverId,
+        },
+      );
+
+      final data = Map<String, dynamic>.from(res.data);
+
+      if (data["messages"] is List) {
+        return List<dynamic>.from(data["messages"]);
+      }
+
+      if (data["data"] is List) {
+        return List<dynamic>.from(data["data"]);
+      }
+
+      return [];
+    } catch (e) {
+      print("FETCH MESSAGES ERROR: $e");
+      return [];
+    }
   }
 
   /// Chat partner listesi
   Future<List<dynamic>> getChatPartners(int userId) async {
-    final res = await _dio.get("/chat_partners/$userId");
-    return res.data ?? [];
+    try {
+      final res = await _dio.get("/chat_partners/$userId");
+
+      if (res.data is List) {
+        return List<dynamic>.from(res.data);
+      }
+
+      if (res.data is Map<String, dynamic>) {
+        final data = Map<String, dynamic>.from(res.data);
+
+        if (data["partners"] is List) {
+          return List<dynamic>.from(data["partners"]);
+        }
+
+        if (data["data"] is List) {
+          return List<dynamic>.from(data["data"]);
+        }
+      }
+
+      return [];
+    } catch (e) {
+      print("GET CHAT PARTNERS ERROR: $e");
+      return [];
+    }
   }
+
 
   /// Mesaj gönderme (text)
   Future<bool> sendMessage(int senderId, int receiverId, String message) async {
     try {
-      await _dio.post("/messages", data: {
-        "sender_id": senderId,
-        "receiver_id": receiverId,
-        "content": message,
-      });
-      return true;
+      final res = await _dio.post(
+        "/messages",
+        data: {
+          "sender_id": senderId,
+          "receiver_id": receiverId,
+          "content": message,
+        },
+      );
+
+      return res.statusCode == 200 || res.statusCode == 201;
     } catch (e) {
       print("SEND MESSAGE ERROR: $e");
       return false;
@@ -82,7 +133,7 @@ class ChatService {
         ),
       );
 
-      return res.statusCode == 200;
+      return res.statusCode == 200 || res.statusCode == 201; 
     } catch (e) {
       print("UPLOAD MEDIA ERROR: $e");
       return false;

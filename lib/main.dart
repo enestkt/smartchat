@@ -7,11 +7,16 @@ import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/chat_list_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final authProvider = AuthProvider();
+  await authProvider.loadSession();
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
       ],
       child: const SmartChatApp(),
     ),
@@ -23,6 +28,8 @@ class SmartChatApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
     return MaterialApp(
       title: 'SmartChat',
       theme: ThemeData(
@@ -32,14 +39,12 @@ class SmartChatApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      //initialRoute: '/chat',
-      home: LoginScreen(),
+      home: auth.userId != null ? const ChatListScreen() : const LoginScreen(),
       routes: {
         '/login': (_) => const LoginScreen(),
         '/signup': (_) => const SignupScreen(),
         '/search': (_) => const SearchUserScreen(),
         '/chats': (_) => const ChatListScreen(),
- 
       },
     );
   }

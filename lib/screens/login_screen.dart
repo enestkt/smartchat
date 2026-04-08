@@ -46,11 +46,15 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("SmartChat",
-                      style: TextStyle(color: Colors.white, fontSize: 40)),
+                  Text(
+                    "SmartChat",
+                    style: TextStyle(color: Colors.white, fontSize: 40),
+                  ),
                   SizedBox(height: 10),
-                  Text("Welcome Back",
-                      style: TextStyle(color: Colors.white, fontSize: 18)),
+                  Text(
+                    "Welcome Back",
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
                 ],
               ),
             ),
@@ -71,7 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         const SizedBox(height: 60),
 
-                        /// INPUT BOX
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -86,7 +89,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           child: Column(
                             children: [
-                              // EMAIL
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -104,8 +106,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                               ),
-
-                              // PASSWORD
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 child: TextField(
@@ -121,9 +121,25 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 20),
 
-                        /// LOGIN BUTTON
+                        if (auth.lastError != null)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.red.shade200),
+                            ),
+                            child: Text(
+                              auth.lastError!,
+                              style: TextStyle(color: Colors.red.shade700),
+                            ),
+                          ),
+
+                        const SizedBox(height: 20),
+
                         SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -137,30 +153,46 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: auth.isLoading
                                 ? null
                                 : () async {
+                                    final email = emailC.text.trim();
+                                    final password = passC.text.trim();
+
+                                    if (email.isEmpty || password.isEmpty) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Email ve password boş olamaz.",
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+
                                     final ok = await context
                                         .read<AuthProvider>()
-                                        .login(
-                                          emailC.text.trim(),
-                                          passC.text.trim(),
-                                        );
+                                        .login(email, password);
 
                                     if (!mounted) return;
 
                                     if (ok) {
                                       Navigator.pushReplacementNamed(
-                                          context, '/chats');
+                                        context,
+                                        '/chats',
+                                      );
                                     } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                "Invalid email or password!")),
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            auth.lastError ??
+                                                "Invalid email or password!",
+                                          ),
+                                        ),
                                       );
                                     }
                                   },
                             child: auth.isLoading
                                 ? const CircularProgressIndicator(
-                                    color: Colors.white)
+                                    color: Colors.white,
+                                  )
                                 : const Text(
                                     "Login",
                                     style: TextStyle(
@@ -173,7 +205,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         const SizedBox(height: 30),
 
-                        /// SIGNUP LINK
                         TextButton(
                           onPressed: () =>
                               Navigator.pushNamed(context, '/signup'),

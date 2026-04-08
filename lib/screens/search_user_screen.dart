@@ -13,11 +13,18 @@ class SearchUserScreen extends StatefulWidget {
 
 class _SearchUserScreenState extends State<SearchUserScreen> {
   final TextEditingController searchC = TextEditingController();
+
   bool isLoading = false;
   String? error;
   Map<String, dynamic>? foundUser;
 
   Color get _primary => const Color(0xFF008F9C);
+
+  @override
+  void dispose() {
+    searchC.dispose();
+    super.dispose();
+  }
 
   Future<void> _searchUser() async {
     final username = searchC.text.trim();
@@ -30,6 +37,17 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
       return;
     }
 
+    final auth = context.read<AuthProvider>();
+    final currentUserId = auth.userId;
+
+    if (currentUserId == null) {
+      setState(() {
+        foundUser = null;
+        error = "Session not found. Please login again.";
+      });
+      return;
+    }
+
     setState(() {
       isLoading = true;
       error = null;
@@ -38,19 +56,42 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
 
     final result = await ChatService().searchUser(username);
 
+    if (!mounted) return;
+
     setState(() {
       isLoading = false;
+
       if (result == null) {
         error = "No user found";
-      } else {
-        foundUser = result;
+        return;
       }
+
+      final int? foundUserId = result["user_id"] is int
+          ? result["user_id"]
+          : int.tryParse(
+              result["user_id"]?.toString() ??
+                  result["id"]?.toString() ??
+                  "",
+            );
+
+      if (foundUserId == null) {
+        error = "User found but user_id is missing.";
+        return;
+      }
+
+      if (foundUserId == currentUserId) {
+        error = "You cannot start a chat with yourself.";
+        return;
+      }
+
+      foundUser = result;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final senderId = context.read<AuthProvider>().userId!;
+    final auth = context.watch<AuthProvider>();
+    final senderId = auth.userId;
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
@@ -65,7 +106,6 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 🔍 SEARCH BOX (KART GİBİ)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
@@ -96,11 +136,8 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
 
             const SizedBox(height: 30),
 
-            // ⏳ LOADING
-            if (isLoading)
-              const CircularProgressIndicator(),
+            if (isLoading) const CircularProgressIndicator(),
 
-            // ❌ ERROR
             if (!isLoading && error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 40),
@@ -111,13 +148,13 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                     Text(
                       error!,
                       style: const TextStyle(fontSize: 16, color: Colors.grey),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
 
-            // 👤 FOUND USER CARD
-            if (!isLoading && foundUser != null)
+            if (!isLoading && foundUser != null && senderId != null)
               _userCard(foundUser!, senderId),
           ],
         ),
@@ -126,6 +163,14 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
   }
 
   Widget _userCard(Map<String, dynamic> user, int currentUser) {
+    final int? receiverId = user["user_id"] is int
+        ? user["user_id"]
+        : int.tryParse(
+            user["user_id"]?.toString() ?? user["id"]?.toString() ?? "",
+          );
+
+    final String receiverName = user["username"]?.toString() ?? "Unknown";
+
     return Container(
       margin: const EdgeInsets.only(top: 20),
       decoration: BoxDecoration(
@@ -140,34 +185,40 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
         ],
       ),
       child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         leading: CircleAvatar(
           radius: 26,
           backgroundColor: _primary.withOpacity(0.15),
           child: Icon(Icons.person, color: _primary),
         ),
         title: Text(
-          user["username"],
+          receiverName,
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
-        subtitle: const Text("Tap to start chat"),
+        subtitle: Text(
+          receiverId == null ? "Invalid user data" : "Tap to start chat",
+        ),
         trailing: Icon(Icons.chat, color: _primary),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatScreen(
-                senderId: currentUser,
-                receiverId: user["id"],
-                receiverName: user["username"],
-              ),
-            ),
-          );
-        },
+        onTap: receiverId == null
+            ? null
+            : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(
+                      senderId: currentUser,
+                      receiverId: receiverId,
+                      receiverName: receiverName,
+                    ),
+                  ),
+                );
+              },
       ),
     );
   }
