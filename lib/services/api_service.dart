@@ -5,7 +5,7 @@ class ApiService {
   static const String baseUrl =
       "http://10.0.2.2:5000";
 
-  final Dio dio = Dio(
+  final Dio _dio = Dio(
     BaseOptions(
       baseUrl: baseUrl,
       headers: {
@@ -23,7 +23,7 @@ class ApiService {
       String email,
       String password,
       ) async {
-    final res = await dio.post(
+    final res = await _dio.post(
       "/login",
       data: {
         "email": email,
@@ -42,7 +42,7 @@ class ApiService {
       String email,
       String password,
       ) async {
-    final res = await dio.post(
+    final res = await _dio.post(
       "/signup",
       data: {
         "username": username,
@@ -63,7 +63,7 @@ class ApiService {
     required int senderId,
     required int receiverId,
   }) async {
-    final res = await dio.post(
+    final res = await _dio.post(
       "/predict",
       data: {
         "text": text,
@@ -85,7 +85,7 @@ class ApiService {
     required int receiverId,
     required String receiverUsername,
   }) async {
-    final res = await dio.post(
+    final res = await _dio.post(
       "/complete",
       data: {
         "text": text,
@@ -106,7 +106,7 @@ class ApiService {
     required int suggestionId,
     required bool accepted,
   }) async {
-    await dio.patch(
+    await _dio.patch(
       "/suggestions/$suggestionId",
       data: {
         "accepted": accepted,

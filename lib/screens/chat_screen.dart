@@ -1,20 +1,24 @@
-import 'dart:async';
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/chat_service.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
-import '../services/chat_service.dart';
+import '../services/color_helper.dart';
+import 'group_info_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final int senderId;
   final int receiverId;
   final String receiverName;
+  final bool isGroup;
 
   const ChatScreen({
     super.key,
     required this.senderId,
     required this.receiverId,
     required this.receiverName,
+    this.isGroup = false,
   });
 
   @override
@@ -28,12 +32,12 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, dynamic>> _messages = [];
   Timer? _pollingTimer;
 
-  Map<String, dynamic>? _analysis; // 🔥 yeni eklendi
-  Timer? _typingTimer; // 🔥 yeni eklendi
+  Map<String, dynamic>? _analysis;      // 🔥 yeni eklendi
+  Timer? _typingTimer;                  // 🔥 yeni eklendi
 
   Map<String, dynamic>? _aiSuggestion; // /complete sonucu
   bool _aiLoading = false;
-  bool _loadingMessages = true;
+
 
   Color get _turquoise => const Color(0xFF008F9C);
 
@@ -52,7 +56,6 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
-    _typingTimer?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -61,73 +64,46 @@ class _ChatScreenState extends State<ChatScreen> {
   // ----------------------------------------------------------
   // LOAD MESSAGES
   // ----------------------------------------------------------
+  Map<String, dynamic> _formatMessage(Map<String, dynamic> m) {
+    final imagePath = m["file_path"] ?? m["image_url"];
+    final timestamp = m["timestamp"] ?? m["created_at"];
+
+    return {
+      "sender_username": m["sender_username"],
+      "text": m["content"] ?? "",
+      "image": imagePath,
+      "isMe": m["sender_id"] == widget.senderId,
+      "time": _formatTime(timestamp?.toString()),
+    };
+  }
+
   Future<void> _loadMessages() async {
-    try {
-      final data = await ChatService().fetchMessages(
-        widget.senderId,
-        widget.receiverId,
-      );
+    final data = await ChatService().fetchMessages(
+      widget.senderId,
+      widget.isGroup ? 0 : widget.receiverId,
+      groupId: widget.isGroup ? widget.receiverId : null,
+    );
 
-      final formatted = data.map<Map<String, dynamic>>((m) {
-        return {
-          "text": m["content"]?.toString() ?? "",
-          "image": m["image_url"]?.toString() ?? m["file_path"]?.toString(),
-          "isMe": m["sender_id"] == widget.senderId,
-          "time": _formatTime(
-            m["created_at"]?.toString() ?? m["timestamp"]?.toString(),
-          ),
-          "mediaType": m["media_type"]?.toString(),
-          "mediaUrl": m["image_url"]?.toString() ?? m["file_path"]?.toString(),
-        };
-      }).toList();
+    setState(() {
+      _messages = data.map<Map<String, dynamic>>((m) => _formatMessage(m)).toList();
+    });
 
-      if (!mounted) return;
-
-      setState(() {
-        _messages = formatted;
-        _loadingMessages = false;
-      });
-
-      _scrollToBottom();
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _loadingMessages = false;
-      });
-
-      debugPrint("LOAD MESSAGES ERROR => $e");
-    }
+    _scrollToBottom();
   }
 
   Future<void> _checkNewMessages() async {
-    try {
-      final latest = await ChatService().fetchMessages(
-        widget.senderId,
-        widget.receiverId,
-      );
+    final latest = await ChatService().fetchMessages(
+      widget.senderId,
+      widget.isGroup ? 0 : widget.receiverId,
+      groupId: widget.isGroup ? widget.receiverId : null,
+    );
 
-      final formatted = latest.map<Map<String, dynamic>>((m) {
-        return {
-          "text": m["content"]?.toString() ?? "",
-          "image": m["image_url"]?.toString() ?? m["file_path"]?.toString(),
-          "isMe": m["sender_id"] == widget.senderId,
-          "time": _formatTime(
-            m["created_at"]?.toString() ?? m["timestamp"]?.toString(),
-          ),
-          "mediaType": m["media_type"]?.toString(),
-          "mediaUrl": m["image_url"]?.toString() ?? m["file_path"]?.toString(),
-        };
-      }).toList();
+    final formatted = latest.map<Map<String, dynamic>>((m) => _formatMessage(m)).toList();
 
-      if (!mounted) return;
-
-      if (formatted.length != _messages.length) {
-        setState(() => _messages = formatted);
-        _scrollToBottom();
-      }
-    } catch (e) {
-      debugPrint("CHECK NEW MESSAGES ERROR => $e");
+    if (formatted.length != _messages.length ||
+        formatted.toString() != _messages.toString()) {
+      setState(() => _messages = formatted);
+      _scrollToBottom();
     }
   }
 
@@ -135,15 +111,14 @@ class _ChatScreenState extends State<ChatScreen> {
   // TIME FORMAT
   // ----------------------------------------------------------
   String _formatTime(String? raw) {
-    if (raw == null || raw.isEmpty) return "";
+    if (raw == null) return "";
     try {
       final dt = DateTime.parse(raw);
       return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
     } catch (_) {
-      return raw;
+      return "";
     }
   }
-
   void _handleTyping(String text) {
     if (_typingTimer != null) {
       _typingTimer!.cancel();
@@ -151,7 +126,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _typingTimer = Timer(const Duration(seconds: 1), () async {
       if (text.trim().isEmpty) {
-        if (!mounted) return;
         setState(() => _analysis = null);
         return;
       }
@@ -159,17 +133,15 @@ class _ChatScreenState extends State<ChatScreen> {
       try {
         final result = await ApiService().predictMessage(
           text: text,
-          senderId: widget.senderId, // ✅ DOĞRU
-          receiverId: widget.receiverId, // ✅ DOĞRU
+          senderId: widget.senderId,      // ✅ DOĞRU
+          receiverId: widget.receiverId,  // ✅ DOĞRU
         );
-
-        if (!mounted) return;
 
         setState(() {
           _analysis = result;
         });
       } catch (e) {
-        debugPrint("PREDICT ERROR: $e");
+        print("PREDICT ERROR: $e");
       }
     });
   }
@@ -193,18 +165,17 @@ class _ChatScreenState extends State<ChatScreen> {
 
       debugPrint("COMPLETE RESPONSE => $res");
 
-      if (!mounted) return;
-
       setState(() {
         _aiSuggestion = res;
       });
     } catch (e) {
       debugPrint("COMPLETE ERROR => $e");
     } finally {
-      if (!mounted) return;
       setState(() => _aiLoading = false);
     }
   }
+
+
 
   // ----------------------------------------------------------
   // SEND MESSAGE
@@ -216,7 +187,6 @@ class _ChatScreenState extends State<ChatScreen> {
     // 🔥 AI panelini temizle
     setState(() {
       _analysis = null;
-      _aiSuggestion = null;
     });
 
     // Mesajı ekrana ekle
@@ -224,37 +194,26 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add({
         "text": text,
         "isMe": true,
-        "time": _formatTime(DateTime.now().toIso8601String()),
-        "image": null,
-        "mediaType": null,
-        "mediaUrl": null,
+        "time": _formatTime(DateTime.now().toString()),
       });
     });
 
     _messageController.clear();
     _scrollToBottom();
 
-    final ok = await ChatService().sendMessage(
+    await ChatService().sendMessage(
       widget.senderId,
-      widget.receiverId,
+      widget.isGroup ? 0 : widget.receiverId,
       text,
+      groupId: widget.isGroup ? widget.receiverId : null,
     );
-
-    if (!ok) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Message could not be sent.")),
-      );
-    }
-
-    await _loadMessages();
   }
 
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          0,
+          _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -266,13 +225,12 @@ class _ChatScreenState extends State<ChatScreen> {
   // MESSAGE BUBBLE
   // ----------------------------------------------------------
   Widget _bubble(Map<String, dynamic> msg) {
-    final isMe = msg["isMe"] == true;
+    final isMe = msg["isMe"];
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(
-        crossAxisAlignment:
-            isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Container(
             margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -282,80 +240,90 @@ class _ChatScreenState extends State<ChatScreen> {
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
                 topRight: const Radius.circular(16),
-                bottomLeft:
-                    isMe ? const Radius.circular(16) : const Radius.circular(4),
-                bottomRight:
-                    isMe ? const Radius.circular(4) : const Radius.circular(16),
+                bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+                bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
               ),
             ),
-            child: _buildMessageContent(msg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.isGroup && !isMe && msg["sender_username"] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4.0),
+                    child: Text(
+                      msg["sender_username"],
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: ColorHelper.getPastelColor(msg["sender_username"]),
+                      ),
+                    ),
+                  ),
+                msg["image"] != null
+                    ? _buildImageWidget(msg["image"] as String)
+                    : Text(msg["text"], style: const TextStyle(fontSize: 16)),
+              ]
+            ),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 12, left: 12),
-            child: Text(
-              msg["time"]?.toString() ?? "",
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
+            child: Text(msg["time"], style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           )
         ],
       ),
     );
   }
 
+  Widget _buildImageWidget(String imagePath) {
+    final isHttp = imagePath.startsWith("http://") || imagePath.startsWith("https://");
+    final isDocs = imagePath.startsWith("docs/");
+
+    if (isHttp || isDocs) {
+      final url = isHttp ? imagePath : "${ChatService.baseUrl}/$imagePath";
+      return Image.network(
+        url,
+        width: 200,
+        fit: BoxFit.cover,
+      );
+    }
+
+    return Image.file(
+      File(imagePath),
+      width: 200,
+      fit: BoxFit.cover,
+    );
+  }
+
   // ----------------------------------------------------------
+
+  // BUILD
+  // ----------------------------------------------------------
+
   // TEXT OR IMAGE LOGIC
   // ----------------------------------------------------------
   Widget _buildMessageContent(Map<String, dynamic> msg) {
-    final imagePath = msg["image"]?.toString();
-    final mediaUrl = msg["mediaUrl"]?.toString();
-
-    if ((msg["mediaType"] == "image" || imagePath != null) &&
-        (mediaUrl != null || imagePath != null)) {
-      final source = mediaUrl ?? imagePath!;
-
-      if (source.startsWith("http://") || source.startsWith("https://")) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.network(
-            source,
-            width: 220,
-            height: 220,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox(
-              width: 220,
-              height: 220,
-              child: Center(child: Text("Image failed to load")),
-            ),
-          ),
-        );
-      }
-
+    if (msg["mediaType"] == "image" && msg["mediaUrl"] != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(10),
-        child: Image.file(
-          File(source),
+        child: Image.network(
+          msg["mediaUrl"],
           width: 220,
           height: 220,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const SizedBox(
-            width: 220,
-            height: 220,
-            child: Center(child: Text("Image failed to load")),
-          ),
         ),
       );
     }
 
     return Text(
-      msg["text"]?.toString() ?? "",
+      msg["text"] ?? "",
       style: const TextStyle(fontSize: 16),
     );
   }
 
   // ----------------------------------------------------------
-  // BUILD
-  // ----------------------------------------------------------
-  @override
+// BUILD
+// ----------------------------------------------------------
+
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true, // Klavyenin alanı daraltmasını sağlar
@@ -364,37 +332,52 @@ class _ChatScreenState extends State<ChatScreen> {
         backgroundColor: _turquoise,
         elevation: 1,
         titleSpacing: 0,
-        title: Row(
-          children: [
-            const CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.white24,
-              child: Icon(Icons.person, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  widget.receiverName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+        title: GestureDetector(
+          onTap: () {
+            if (widget.isGroup) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GroupInfoScreen(
+                    groupId: widget.receiverId,
+                    groupName: widget.receiverName,
                   ),
                 ),
-                const SizedBox(height: 2),
-                const Text(
-                  "online",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 12,
+              ).then((_) => _loadMessages());
+            }
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.white24,
+                child: Icon(widget.isGroup ? Icons.group : Icons.person, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.receiverName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.isGroup ? "Tap for group info" : "online",
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           IconButton(
@@ -411,30 +394,27 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+
       body: Column(
         children: [
           // 1. ÜST KISIM: Mesajlar ve üzerine binen AI Panelleri
           Expanded(
             child: Stack(
               children: [
-                if (_loadingMessages)
-                  const Center(child: CircularProgressIndicator())
-                else
-                  ListView.builder(
-                    controller: _scrollController,
-                    reverse: true,
-                    // ÖNEMLİ: AI Paneli açıkken mesajlar arkada kalmasın diye alt boşluk veriyoruz
-                    padding: EdgeInsets.only(
-                      bottom:
-                          (_analysis != null || _aiSuggestion != null) ? 180 : 12,
-                      top: 12,
-                    ),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, i) {
-                      final msg = _messages[_messages.length - 1 - i];
-                      return _bubble(msg);
-                    },
+                // Mesaj Listesi
+                ListView.builder(
+                  controller: _scrollController,
+                  // ÖNEMLİ: AI Paneli açıkken mesajlar arkada kalmasın diye alt boşluk veriyoruz
+                  padding: EdgeInsets.only(
+                    bottom: (_analysis != null || _aiSuggestion != null) ? 180 : 12,
+                    top: 12,
                   ),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, i) {
+                    final msg = _messages[i];
+                    return _bubble(msg);
+                  },
+                ),
 
                 // 2. YÜZER AI PANELLERİ (Positioned ile listenin en altına sabitliyoruz)
                 Positioned(
@@ -455,8 +435,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
 
                       // AI Öneri Paneli
-                      if (_aiSuggestion != null)
-                        _buildAiSuggestionFloatingPanel(),
+                      if (_aiSuggestion != null) _buildAiSuggestionFloatingPanel(),
                     ],
                   ),
                 ),
@@ -465,6 +444,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
 
           // 3. ALT KISIM: Giriş Çubuğu (Yeri hiç değişmez, klavye kapanmaz)
+
           _inputBar(),
         ],
       ),
@@ -473,12 +453,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // AI Öneri panelini temiz görünmesi için ayrı bir widget olarak tanımladım
   Widget _buildAiSuggestionFloatingPanel() {
-    final completion = _aiSuggestion?["completion"]?.toString() ??
-        _aiSuggestion?["suggested_text"]?.toString() ??
-        "";
-
-    final suggestionId = _aiSuggestion?["suggestion_id"];
-
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -487,60 +461,39 @@ class _ChatScreenState extends State<ChatScreen> {
         color: Colors.blueGrey.shade50.withOpacity(0.98), // Hafif saydam ve şık
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          )
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, -2))
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "AI Message Suggestion",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+          const Text("AI Message Suggestion", style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           GestureDetector(
             onTap: () {
-              _messageController.text = completion;
-              _messageController.selection = TextSelection.fromPosition(
-                TextPosition(offset: completion.length),
-              );
+              final text = _aiSuggestion!["completion"];
+              _messageController.text = text;
+              _messageController.selection = TextSelection.fromPosition(TextPosition(offset: text.length));
             },
-            child: Text(completion, style: const TextStyle(fontSize: 15)),
+            child: Text(_aiSuggestion!["completion"] ?? "", style: const TextStyle(fontSize: 15)),
           ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(
-                onPressed: suggestionId == null
-                    ? () => setState(() => _aiSuggestion = null)
-                    : () async {
-                        await ApiService().updateSuggestionStatus(
-                          suggestionId: suggestionId,
-                          accepted: false,
-                        );
-                        if (!mounted) return;
-                        setState(() => _aiSuggestion = null);
-                      },
+                onPressed: () async {
+                  await ApiService().updateSuggestionStatus(suggestionId: _aiSuggestion!["suggestion_id"], accepted: false);
+                  setState(() => _aiSuggestion = null);
+                },
                 child: const Text("Reject"),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: () async {
-                  _messageController.text = completion;
-
-                  if (suggestionId != null) {
-                    await ApiService().updateSuggestionStatus(
-                      suggestionId: suggestionId,
-                      accepted: true,
-                    );
-                  }
-
-                  if (!mounted) return;
+                  final text = _aiSuggestion!["completion"];
+                  _messageController.text = text;
+                  await ApiService().updateSuggestionStatus(suggestionId: _aiSuggestion!["suggestion_id"], accepted: true);
                   setState(() => _aiSuggestion = null);
                 },
                 child: const Text("Accept"),
@@ -551,6 +504,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
+
+
 
   // ----------------------------------------------------------
   // INPUT BAR
@@ -608,6 +564,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+
   // ----------------------------------------------------------
   // MEDIA SHEET
   // ----------------------------------------------------------
@@ -624,18 +581,8 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _mediaOption(
-                Icons.camera_alt,
-                "Camera",
-                Colors.cyan,
-                _captureImage,
-              ),
-              _mediaOption(
-                Icons.photo,
-                "Gallery",
-                Colors.purple,
-                _pickImage,
-              ),
+              _mediaOption(Icons.camera_alt, "Camera", Colors.cyan, _captureImage),
+              _mediaOption(Icons.photo, "Gallery", Colors.purple, _pickImage),
             ],
           ),
         );
@@ -644,11 +591,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _mediaOption(
-    IconData icon,
-    String label,
-    Color color,
-    Future<void> Function() onTap,
-  ) {
+      IconData icon, String label, Color color, Future<void> Function() onTap) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -682,33 +625,26 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() {
       _messages.add({
         "text": "",
-        "image": picked.path, // 🔥 TEMP DEĞİL → gerçek local dosya yolu
+        "image": picked.path,  // 🔥 TEMP DEĞİL → gerçek local dosya yolu
         "isMe": true,
-        "time": _formatTime(DateTime.now().toIso8601String()),
-        "mediaType": "image",
-        "mediaUrl": picked.path,
+        "time": _formatTime(DateTime.now().toString())
       });
     });
 
     _scrollToBottom();
 
     // Sonra backend’e yükle
-    final ok = await ChatService().uploadMedia(
+    await ChatService().uploadMedia(
       senderId: widget.senderId,
-      receiverId: widget.receiverId,
+      receiverId: widget.isGroup ? 0 : widget.receiverId,
+      groupId: widget.isGroup ? widget.receiverId : null,
       filePath: picked.path,
       mediaType: "image",
     );
 
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Image upload failed.")),
-      );
-    }
-
-    // Backend URL geldikten sonra doğru URL ile yeniden yükle
-    await _loadMessages();
-  }
+  // Backend URL geldikten sonra doğru URL ile yeniden yükle
+  _loadMessages();
+}
 
   Future<void> _captureImage() async {
     final picker = ImagePicker();
@@ -716,34 +652,28 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (picked == null) return;
 
-    setState(() {
-      _messages.add({
-        "text": "",
-        "image": picked.path,
-        "isMe": true,
-        "time": _formatTime(DateTime.now().toIso8601String()),
-        "mediaType": "image",
-        "mediaUrl": picked.path,
+      setState(() {
+        _messages.add({
+          "text": "",
+          "image": picked.path,
+          "isMe": true,
+          "time": _formatTime(DateTime.now().toString())
+        });
       });
-    });
 
-    _scrollToBottom();
+      _scrollToBottom();
 
-    final ok = await ChatService().uploadMedia(
+    await ChatService().uploadMedia(
       senderId: widget.senderId,
-      receiverId: widget.receiverId,
+      receiverId: widget.isGroup ? 0 : widget.receiverId,
+      groupId: widget.isGroup ? widget.receiverId : null,
       filePath: picked.path,
       mediaType: "image",
     );
 
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Camera image upload failed.")),
-      );
-    }
-
-    await _loadMessages();
+    _loadMessages();
   }
+
 
   Widget _aiPanel() {
     if (_analysis == null) return const SizedBox();
@@ -791,7 +721,7 @@ class _ChatScreenState extends State<ChatScreen> {
               _analysis!["sentiment_confidence"] != null)
             Text(
               "• Sentiment: ${_analysis!["sentiment"]} "
-              "(${(_analysis!["sentiment_confidence"] * 100).toStringAsFixed(1)}%)",
+                  "(${(_analysis!["sentiment_confidence"] * 100).toStringAsFixed(1)}%)",
               style: const TextStyle(fontSize: 14),
             ),
 
@@ -805,4 +735,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
+
+
+
+
 }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../providers/auth_provider.dart';
 import '../services/chat_service.dart';
 import 'chat_screen.dart';
-import 'login_screen.dart';
+import 'create_group_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -15,209 +16,136 @@ class ChatListScreen extends StatefulWidget {
 class _ChatListScreenState extends State<ChatListScreen> {
   bool isLoading = true;
   List<dynamic> partners = [];
-  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadPartners();
-    });
+    _loadPartners();
   }
 
   Future<void> _loadPartners() async {
     final auth = context.read<AuthProvider>();
     final userId = auth.userId;
 
-    if (userId == null) {
-      setState(() {
-        isLoading = false;
-        errorMessage = "Oturum bulunamadı. Lütfen tekrar giriş yap.";
-      });
-      return;
-    }
+    if (userId == null) return;
 
-    try {
-      final data = await ChatService().getChatPartners(userId);
+    final data = await ChatService().getChatPartners(userId);
 
-      if (!mounted) return;
-
-      setState(() {
-        isLoading = false;
-        partners = data;
-        errorMessage = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        isLoading = false;
-        errorMessage = "Sohbet listesi yüklenemedi: $e";
-      });
-    }
+    setState(() {
+      isLoading = false;
+      partners = data;
+    });
   }
 
+  // 🔥 LOGOUT
   Future<void> _logout() async {
-    await context.read<AuthProvider>().logout();
+    const storage = FlutterSecureStorage();
+    await storage.deleteAll();
 
     if (!mounted) return;
 
-    Navigator.pushAndRemoveUntil(
+    Navigator.pushNamedAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      "/login",
       (route) => false,
     );
   }
 
-  Future<void> _refresh() async {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-
-    await _loadPartners();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF008F9C),
-        title: Text(
-          auth.userId != null
-              ? "SmartChat"
-              : "SmartChat - Oturum Yok",
-          style: const TextStyle(color: Colors.white, fontSize: 22),
+        title: const Text(
+          "SmartChat",
+          style: TextStyle(color: Colors.white, fontSize: 22),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: _logout,
+          )
+        ],
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: "group",
+            mini: true,
+            backgroundColor: const Color(0xFF008F9C),
+            onPressed: () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateGroupScreen()));
+              if (!mounted) return;
+              _loadPartners();
+            },
+            child: const Icon(Icons.group_add, color: Colors.white),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: "contact",
+            backgroundColor: const Color(0xFF008F9C),
             onPressed: () async {
               await Navigator.pushNamed(context, "/search");
               if (!mounted) return;
-              await _refresh();
+              _loadPartners();
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: _logout,
+            child: const Icon(Icons.person_add_alt_1, color: Colors.white),
           ),
         ],
       ),
+
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.red,
-                      ),
-                    ),
+          : partners.isEmpty
+              ? const Center(
+                  child: Text(
+                    "No conversations yet.",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                 )
-              : partners.isEmpty
-                  ? RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: ListView(
-                        children: const [
-                          SizedBox(height: 180),
-                          Center(
-                            child: Text(
-                              "No conversations yet.",
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                              ),
+              : ListView.builder(
+                  itemCount: partners.length,
+                  itemBuilder: (context, i) {
+                    final user = partners[i];
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        child: Icon(user["is_group"] == 1 ? Icons.group : Icons.person),
+                        radius: 24,
+                      ),
+                      title: Text(
+                        user["username"] ?? "Unknown",
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        user["last_message"] ?? "No messages yet.",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: Text(
+                        user["last_time"] ?? "",
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                                senderId: context.read<AuthProvider>().userId!,
+                              receiverId: user["user_id"],
+                              receiverName: user["username"],
+                              isGroup: user["is_group"] == 1,
                             ),
                           ),
-                        ],
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: ListView.builder(
-                        itemCount: partners.length,
-                        itemBuilder: (context, i) {
-                          final user = partners[i] as Map<String, dynamic>;
-
-                          final int? receiverId = user["user_id"] is int
-                              ? user["user_id"]
-                              : int.tryParse(user["user_id"]?.toString() ?? "");
-
-                          final String receiverName =
-                              user["username"]?.toString() ?? "Unknown";
-
-                          final String lastMessage =
-                              user["last_message"]?.toString() ??
-                                  user["content"]?.toString() ??
-                                  "No messages yet.";
-
-                          final String lastTime =
-                              user["last_time"]?.toString() ??
-                                  user["timestamp"]?.toString() ??
-                                  "";
-
-                          return ListTile(
-                            leading: const CircleAvatar(
-                              radius: 24,
-                              child: Icon(Icons.person),
-                            ),
-                            title: Text(
-                              receiverName,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text(
-                              lastMessage,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: Text(
-                              lastTime,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            onTap: receiverId == null
-                                ? null
-                                : () {
-                                    final senderId =
-                                        context.read<AuthProvider>().userId;
-
-                                    if (senderId == null) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Oturum bulunamadı. Tekrar giriş yap.",
-                                          ),
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ChatScreen(
-                                          senderId: senderId,
-                                          receiverId: receiverId,
-                                          receiverName: receiverName,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                          );
-                        },
-                      ),
-                    ),
+                        );
+                      },
+                    );
+                  },
+                ),
     );
   }
 }
