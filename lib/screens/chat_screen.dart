@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../services/color_helper.dart';
 import 'group_info_screen.dart';
+import '../services/socket_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final int senderId;
@@ -28,9 +29,12 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final SocketService _socketService  = SocketService();
+
+  bool _isOtherUserTyping = false;
+  Timer? _stopTypingTimer;
 
   List<Map<String, dynamic>> _messages = [];
-  Timer? _pollingTimer;
 
   Map<String, dynamic>? _analysis;      // 🔥 yeni eklendi
   Timer? _typingTimer;                  // 🔥 yeni eklendi
@@ -45,21 +49,20 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _loadMessages();
-
-    // POLLING
-    _pollingTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) => _checkNewMessages(),
-    );
+    _setupSocket();
   }
 
   @override
   void dispose() {
-    _pollingTimer?.cancel();
+    _typingTimer?.cancel();
+    _stopTypingTimer?.cancel();
+    _socketService.removeListeners();
+    _socketService.disconnect();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
+
 
   // ----------------------------------------------------------
   // LOAD MESSAGES
@@ -91,21 +94,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
-  Future<void> _checkNewMessages() async {
-    final latest = await ChatService().fetchMessages(
-      widget.senderId,
-      widget.isGroup ? 0 : widget.receiverId,
-      groupId: widget.isGroup ? widget.receiverId : null,
-    );
 
-    final formatted = latest.map<Map<String, dynamic>>((m) => _formatMessage(m)).toList();
-
-    if (formatted.length != _messages.length ||
-        formatted.toString() != _messages.toString()) {
-      setState(() => _messages = formatted);
-      _scrollToBottom();
-    }
-  }
 
   // ----------------------------------------------------------
   // TIME FORMAT
@@ -120,9 +109,14 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
   void _handleTyping(String text) {
-    if (_typingTimer != null) {
-      _typingTimer!.cancel();
+    if (!widget.isGroup && text.trim().isNotEmpty) {
+      _socketService.sendTyping(
+        senderId: widget.senderId,
+        receiverId: widget.receiverId,
+      );
     }
+
+    _typingTimer?.cancel();
 
     _typingTimer = Timer(const Duration(seconds: 1), () async {
       if (text.trim().isEmpty) {
@@ -133,8 +127,8 @@ class _ChatScreenState extends State<ChatScreen> {
       try {
         final result = await ApiService().predictMessage(
           text: text,
-          senderId: widget.senderId,      // ✅ DOĞRU
-          receiverId: widget.receiverId,  // ✅ DOĞRU
+          senderId: widget.senderId,
+          receiverId: widget.receiverId,
         );
 
         setState(() {
@@ -145,6 +139,72 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
+
+  void _setupSocket() {
+  _socketService.connect();
+
+  if (!widget.isGroup) {
+    _socketService.joinPrivateRoom(widget.senderId, widget.receiverId);
+  }
+
+  _socketService.onNewMessage((data) {
+    if (!mounted || data == null) return;
+
+    final incomingSenderId = data["sender_id"];
+    final incomingReceiverId = data["receiver_id"];
+    final incomingGroupId = data["group_id"];
+
+    final isCurrentPrivateChat = !widget.isGroup &&
+        ((incomingSenderId == widget.senderId && incomingReceiverId == widget.receiverId) ||
+         (incomingSenderId == widget.receiverId && incomingReceiverId == widget.senderId));
+
+    final isCurrentGroupChat =
+        widget.isGroup && incomingGroupId == widget.receiverId;
+
+    if (!isCurrentPrivateChat && !isCurrentGroupChat) return;
+
+    final newMessage = {
+      "sender_username": data["sender_username"],
+      "text": data["content"] ?? "",
+      "image": data["file_path"] ?? data["image_url"],
+      "isMe": incomingSenderId == widget.senderId,
+      "time": _formatTime(
+        data["timestamp"]?.toString() ?? DateTime.now().toIso8601String(),
+      ),
+    };
+
+    setState(() {
+      final alreadyExists = _messages.any((m) =>
+          m["text"] == newMessage["text"] &&
+          m["time"] == newMessage["time"] &&
+          m["isMe"] == newMessage["isMe"]);
+
+      if (!alreadyExists) {
+        _messages.add(newMessage);
+      }
+    });
+
+    _scrollToBottom();
+  });
+
+  _socketService.onTyping((data) {
+    if (!mounted || data == null) return;
+
+    if (data["sender_id"] == widget.senderId) return;
+
+    setState(() {
+      _isOtherUserTyping = true;
+    });
+
+    _stopTypingTimer?.cancel();
+    _stopTypingTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() {
+        _isOtherUserTyping = false;
+      });
+    });
+  });
+}
 
   Future<void> _testComplete() async {
     final text = _messageController.text.trim();
@@ -184,29 +244,36 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    // 🔥 AI panelini temizle
     setState(() {
       _analysis = null;
     });
 
-    // Mesajı ekrana ekle
+    final localMessage = {
+      "text": text,
+      "isMe": true,
+      "time": _formatTime(DateTime.now().toString()),
+    };
+
     setState(() {
-      _messages.add({
-        "text": text,
-        "isMe": true,
-        "time": _formatTime(DateTime.now().toString()),
-      });
+      _messages.add(localMessage);
     });
 
     _messageController.clear();
     _scrollToBottom();
 
-    await ChatService().sendMessage(
-      widget.senderId,
-      widget.isGroup ? 0 : widget.receiverId,
-      text,
-      groupId: widget.isGroup ? widget.receiverId : null,
-    );
+    if (widget.isGroup) {
+      _socketService.socket?.emit("send_message", {
+        "sender_id": widget.senderId,
+        "group_id": widget.receiverId,
+        "content": text,
+      });
+    } else {
+      _socketService.sendPrivateMessage(
+        senderId: widget.senderId,
+        receiverId: widget.receiverId,
+        content: text,
+      );
+    }
   }
 
   void _scrollToBottom() {
@@ -368,7 +435,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    widget.isGroup ? "Tap for group info" : "online",
+                    widget.isGroup 
+                    ? "Tap for group info" 
+                    : (_isOtherUserTyping ? "Yazıyor..." : "Çevrimiçi"),
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
