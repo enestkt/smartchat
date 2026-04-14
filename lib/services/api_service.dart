@@ -114,5 +114,16 @@ class ApiService {
     );
   }
 
-  
+  // -------------------------------------------------------------
+  // RELATIONSHIP HISTORY → /relationships/{user1_id}/{user2_id}/history
+  // -------------------------------------------------------------
+  Future<Map<String, dynamic>> getRelationshipHistory({
+    required int user1Id,
+    required int user2Id,
+  }) async {
+    final res = await _dio.get(
+      "/relationships/$user1Id/$user2Id/history",
+    );
+    return Map<String, dynamic>.from(res.data);
+  }
 }

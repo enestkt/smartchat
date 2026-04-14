@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/color_helper.dart';
 import 'group_info_screen.dart';
 import '../services/socket_service.dart';
+import 'relationship_dashboard_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final int senderId;
@@ -411,6 +412,17 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
               ).then((_) => _loadMessages());
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RelationshipDashboardScreen(
+                    senderId: widget.senderId,
+                    receiverId: widget.receiverId,
+                    receiverName: widget.receiverName,
+                  ),
+                ),
+              );
             }
           },
           child: Row(
