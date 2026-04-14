@@ -26,11 +26,6 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  bool _isValidEmail(String email) {
-    final regex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    return regex.hasMatch(email);
-  }
-
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -103,7 +98,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: Column(
                       children: [
                         const SizedBox(height: 30),
-
+                        
                         /// USERNAME INPUT
                         _buildInputField(
                           controller: usernameC,
@@ -127,24 +122,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           icon: Icons.lock_outline,
                           isPassword: true,
                         ),
-                        const SizedBox(height: 20),
-
-                        if (auth.lastError != null)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.red.shade200),
-                            ),
-                            child: Text(
-                              auth.lastError!,
-                              style: TextStyle(color: Colors.red.shade700),
-                            ),
-                          ),
-
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 40),
 
                         /// SIGNUP BUTTON
                         Container(
@@ -174,74 +152,25 @@ class _SignupScreenState extends State<SignupScreen> {
                             onPressed: auth.isLoading
                                 ? null
                                 : () async {
-                                    final username = usernameC.text.trim();
-                                    final email = emailC.text.trim();
-                                    final password = passC.text.trim();
-
-                                    if (username.isEmpty ||
-                                        email.isEmpty ||
-                                        password.isEmpty) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Tüm alanları doldurmalısın.",
-                                          ),
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    if (!_isValidEmail(email)) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Geçerli bir e-posta adresi gir.",
-                                          ),
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    if (password.length < 3) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Şifre en az 3 karakter olsun.",
-                                          ),
-                                        ),
-                                      );
-                                      return;
-                                    }
-
-                                    final provider =
-                                        context.read<AuthProvider>();
+                                    final provider = context.read<AuthProvider>();
 
                                     final ok = await provider.signup(
-                                      username,
-                                      email,
-                                      password,
+                                      usernameC.text.trim(),
+                                      emailC.text.trim(),
+                                      passC.text.trim(),
                                     );
 
                                     if (!mounted) return;
 
                                     if (ok) {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Kayıt başarılı, giriş yapabilirsiniz.",
-                                          ),
-                                        ),
+                                        const SnackBar(content: Text("Kayıt başarılı, giriş yapabilirsiniz.")),
                                       );
                                       Navigator.pop(context);
                                     } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                          content: Text(
-                                            provider.lastError ??
-                                                "Kayıt başarısız",
-                                          ),
-                                        ),
+                                            content: Text(provider.lastError ?? "Kayıt başarısız")),
                                       );
                                     }
                                   },
@@ -270,23 +199,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
                         /// LOGIN LINK
                         TextButton(
-                          onPressed: () {
-                            if (Navigator.canPop(context)) {
-                              Navigator.pop(context);
-                            } else {
-                              Navigator.pushNamed(context, '/login');
-                            }
-                          },
+                          onPressed: () => Navigator.pushNamed(context, '/login'),
                           child: RichText(
                             text: TextSpan(
-                              style: GoogleFonts.inter(
-                                color: Colors.grey.shade600,
-                                fontSize: 15,
-                              ),
+                              style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 15),
                               children: [
-                                const TextSpan(
-                                  text: "Zaten hesabınız var mı? ",
-                                ),
+                                const TextSpan(text: "Zaten hesabınız var mı? "),
                                 TextSpan(
                                   text: "Giriş Yap",
                                   style: TextStyle(

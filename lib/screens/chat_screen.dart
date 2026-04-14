@@ -43,6 +43,9 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, dynamic>? _aiSuggestion; // /complete sonucu
   bool _aiLoading = false;
 
+  List<String>? _smartReplies;
+  bool _smartRepliesLoading = false;
+
 
   Color get _turquoise => const Color(0xFF008F9C);
 
@@ -93,6 +96,14 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _scrollToBottom();
+
+    // Sohbet açıldığında, son mesaj karşı taraftansa Akıllı Yanıtları getir (Test için kolaylık)
+    if (_messages.isNotEmpty && widget.isGroup == false) {
+      final lastMsg = _messages.last;
+      if (lastMsg["isMe"] == false && lastMsg["text"] != null && (lastMsg["text"] as String).trim().isNotEmpty) {
+        _fetchSmartReplies(lastMsg["text"]);
+      }
+    }
   }
 
 
@@ -110,6 +121,9 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
   void _handleTyping(String text) {
+    if (_smartReplies != null) {
+      setState(() => _smartReplies = null);
+    }
     if (!widget.isGroup && text.trim().isNotEmpty) {
       _socketService.sendTyping(
         senderId: widget.senderId,
@@ -186,6 +200,10 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _scrollToBottom();
+    
+    if (!(newMessage["isMe"] as bool) && (newMessage["text"] as String).isNotEmpty) {
+      _fetchSmartReplies(newMessage["text"]);
+    }
   });
 
   _socketService.onTyping((data) {
@@ -239,6 +257,39 @@ class _ChatScreenState extends State<ChatScreen> {
 
 
   // ----------------------------------------------------------
+  // SMART REPLIES FETCH
+  // ----------------------------------------------------------
+  Future<void> _fetchSmartReplies(String lastMessage) async {
+    setState(() {
+      _smartRepliesLoading = true;
+      _smartReplies = null;
+    });
+
+    try {
+      final replies = await ApiService().getSmartReplies(
+        senderId: widget.senderId,
+        receiverId: widget.receiverId,
+        lastMessage: lastMessage,
+      );
+
+      if (mounted) {
+        setState(() {
+          _smartReplies = replies;
+        });
+      }
+    } catch (e) {
+      print("fetch smart replies error: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _smartRepliesLoading = false;
+        });
+      }
+    }
+  }
+
+
+  // ----------------------------------------------------------
   // SEND MESSAGE
   // ----------------------------------------------------------
   Future<void> _sendMessage() async {
@@ -247,6 +298,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     setState(() {
       _analysis = null;
+      _smartReplies = null;
     });
 
     final localMessage = {
@@ -525,6 +577,11 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
 
           // 3. ALT KISIM: Giriş Çubuğu (Yeri hiç değişmez, klavye kapanmaz)
+          if (_smartRepliesLoading)
+            const LinearProgressIndicator(minHeight: 2),
+            
+          if (_smartReplies != null && _smartReplies!.isNotEmpty)
+            _buildSmartRepliesDrawer(),
 
           _inputBar(),
         ],
@@ -589,6 +646,36 @@ class _ChatScreenState extends State<ChatScreen> {
 
 
 
+  Widget _buildSmartRepliesDrawer() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _smartReplies!.map((reply) {
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: ActionChip(
+                backgroundColor: _turquoise.withOpacity(0.1),
+                side: BorderSide(color: _turquoise.withOpacity(0.3)),
+                label: Text(
+                  reply,
+                  style: TextStyle(color: _turquoise, fontWeight: FontWeight.w600),
+                ),
+                onPressed: () {
+                  _messageController.text = reply;
+                  // _sendMessage(); // if we want to send directly
+                },
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
   // ----------------------------------------------------------
   // INPUT BAR
   // ----------------------------------------------------------
@@ -616,6 +703,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 controller: _messageController,
                 maxLines: 4,
                 minLines: 1,
+                onTap: () {
+                  Future.delayed(const Duration(milliseconds: 300), _scrollToBottom);
+                },
                 decoration: const InputDecoration(
                   hintText: "Message",
                   border: InputBorder.none,
@@ -816,9 +906,4 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-
-
-
-
-
 }

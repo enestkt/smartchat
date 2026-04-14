@@ -65,7 +65,8 @@ class _RelationshipDashboardScreenState extends State<RelationshipDashboardScree
         }
 
         setState(() {
-          _currentScore = res["current_score"] ?? 50;
+         // Gelen veriyi önce 'num' (her iki sayı tipi) olarak kabul et, sonra int'e çevir
+          _currentScore = (res["current_score"] as num? ?? 50).toInt();
           _spots = loadedSpots;
           _dates = loadedDates;
           _isLoading = false;

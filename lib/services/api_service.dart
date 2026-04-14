@@ -126,4 +126,32 @@ class ApiService {
     );
     return Map<String, dynamic>.from(res.data);
   }
+
+  // -------------------------------------------------------------
+  // SMART REPLIES → /smart_replies
+  // -------------------------------------------------------------
+  Future<List<String>> getSmartReplies({
+    required int senderId,
+    required int receiverId,
+    required String lastMessage,
+  }) async {
+    try {
+      final res = await _dio.post(
+        "/smart_replies",
+        data: {
+          "sender_id": senderId,
+          "receiver_id": receiverId,
+          "last_message": lastMessage,
+        },
+      );
+      
+      if (res.data != null && res.data["replies"] != null) {
+        return List<String>.from(res.data["replies"]);
+      }
+      return [];
+    } catch (e) {
+      print("getSmartReplies error: $e");
+      return [];
+    }
+  }
 }
