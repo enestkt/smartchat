@@ -154,4 +154,41 @@ class ApiService {
       return [];
     }
   }
+
+  // -------------------------------------------------------------
+  // PROFILE → /profile/{user_id}
+  // -------------------------------------------------------------
+  Future<Map<String, dynamic>> getProfile(int userId) async {
+    final res = await _dio.get("/profile/$userId");
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  Future<Map<String, dynamic>> updateAbout({
+    required int userId,
+    required String about,
+  }) async {
+    final res = await _dio.patch(
+      "/profile/$userId",
+      data: {"about": about},
+    );
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  Future<Map<String, dynamic>> uploadProfilePicture({
+    required int userId,
+    required String filePath,
+  }) async {
+    final fileName = filePath.split('/').last;
+    FormData formData = FormData.fromMap({
+      "file": await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    final res = await _dio.post(
+      "/profile/$userId/picture",
+      data: formData,
+      options: Options(
+        headers: {"Content-Type": "multipart/form-data"},
+      ),
+    );
+    return Map<String, dynamic>.from(res.data);
+  }
 }

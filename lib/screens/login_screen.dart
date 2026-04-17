@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../providers/auth_provider.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -9,12 +11,29 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final emailC = TextEditingController();
   final passC = TextEditingController();
+  bool _obscurePassword = true;
+
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _animController.forward();
+  }
 
   @override
   void dispose() {
+    _animController.dispose();
     emailC.dispose();
     passC.dispose();
     super.dispose();
@@ -27,168 +46,235 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Container(
         width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            colors: [
-              Colors.orange.shade900,
-              Colors.orange.shade800,
-              Colors.orange.shade400,
-            ],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 80),
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("SmartChat",
-                      style: TextStyle(color: Colors.white, fontSize: 40)),
-                  SizedBox(height: 10),
-                  Text("Welcome Back",
-                      style: TextStyle(color: Colors.white, fontSize: 18)),
-                ],
+
+            // ─── HEADER ──────────────────────────────
+            FadeTransition(
+              opacity: _fadeAnim,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "SmartChat",
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      "Tekrar Hoş Geldin 👋",
+                      style: GoogleFonts.inter(
+                        color: Colors.white70,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 40),
+
+            // ─── FORM CARD ──────────────────────────
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(60),
-                    topRight: Radius.circular(60),
+                    topLeft: Radius.circular(AppTheme.radiusXL),
+                    topRight: Radius.circular(AppTheme.radiusXL),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 20,
+                      offset: Offset(0, -5),
+                    ),
+                  ],
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(30),
                   child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 60),
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 30),
 
-                        /// INPUT BOX
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color.fromRGBO(225, 95, 27, .3),
-                                blurRadius: 20,
-                                offset: Offset(0, 10),
-                              ),
-                            ],
+                          // ── EMAIL INPUT ──
+                          _buildInputField(
+                            controller: emailC,
+                            hintText: "E-Posta Adresi",
+                            icon: Icons.email_outlined,
                           ),
-                          child: Column(
-                            children: [
-                              // EMAIL
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Colors.grey.shade200,
-                                    ),
-                                  ),
-                                ),
-                                child: TextField(
-                                  controller: emailC,
-                                  decoration: const InputDecoration(
-                                    hintText: "Email",
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
+                          const SizedBox(height: 20),
 
-                              // PASSWORD
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                child: TextField(
-                                  controller: passC,
-                                  obscureText: true,
-                                  decoration: const InputDecoration(
-                                    hintText: "Password",
-                                    border: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          // ── PASSWORD INPUT ──
+                          _buildInputField(
+                            controller: passC,
+                            hintText: "Şifre",
+                            icon: Icons.lock_outline,
+                            isPassword: true,
                           ),
-                        ),
+                          const SizedBox(height: 40),
 
-                        const SizedBox(height: 40),
-
-                        /// LOGIN BUTTON
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange[900],
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                              ),
+                          // ── LOGIN BUTTON ──
+                          Container(
+                            width: double.infinity,
+                            height: 55,
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusL + 6),
+                              gradient: AppTheme.buttonGradient,
+                              boxShadow: AppTheme.buttonShadow,
                             ),
-                            onPressed: auth.isLoading
-                                ? null
-                                : () async {
-                                    final ok = await context
-                                        .read<AuthProvider>()
-                                        .login(
-                                          emailC.text.trim(),
-                                          passC.text.trim(),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(AppTheme.radiusL + 6),
+                                ),
+                              ),
+                              onPressed: auth.isLoading
+                                  ? null
+                                  : () async {
+                                      final ok = await context
+                                          .read<AuthProvider>()
+                                          .login(
+                                            emailC.text.trim(),
+                                            passC.text.trim(),
+                                          );
+
+                                      if (!mounted) return;
+
+                                      if (ok) {
+                                        Navigator.pushReplacementNamed(
+                                            context, '/chats');
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: const Text(
+                                                "Geçersiz e-posta veya şifre!"),
+                                            backgroundColor:
+                                                AppTheme.negative,
+                                            behavior:
+                                                SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
                                         );
+                                      }
+                                    },
+                              child: auth.isLoading
+                                  ? const SizedBox(
+                                      width: 25,
+                                      height: 25,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 3,
+                                      ),
+                                    )
+                                  : Text(
+                                      "Giriş Yap",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                            ),
+                          ),
 
-                                    if (!mounted) return;
+                          const SizedBox(height: 30),
 
-                                    if (ok) {
-                                      Navigator.pushReplacementNamed(
-                                          context, '/chats');
-                                    } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                "Invalid email or password!")),
-                                      );
-                                    }
-                                  },
-                            child: auth.isLoading
-                                ? const CircularProgressIndicator(
-                                    color: Colors.white)
-                                : const Text(
-                                    "Login",
+                          // ── SIGNUP LINK ──
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pushNamed(context, '/signup'),
+                            child: RichText(
+                              text: TextSpan(
+                                style: GoogleFonts.inter(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 15,
+                                ),
+                                children: [
+                                  const TextSpan(
+                                      text: "Hesabınız yok mu? "),
+                                  TextSpan(
+                                    text: "Kayıt Ol",
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: AppTheme.primaryTeal,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-
-                        const SizedBox(height: 30),
-
-                        /// SIGNUP LINK
-                        TextButton(
-                          onPressed: () =>
-                              Navigator.pushNamed(context, '/signup'),
-                          child: const Text(
-                            "Don’t have an account? Sign up",
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData icon,
+    bool isPassword = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword ? _obscurePassword : false,
+        style: GoogleFonts.inter(fontSize: 16),
+        decoration: InputDecoration(
+          icon: Icon(icon, color: Colors.grey.shade500),
+          hintText: hintText,
+          hintStyle: GoogleFonts.inter(color: Colors.grey.shade400),
+          border: InputBorder.none,
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: Colors.grey.shade400,
+                    size: 22,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                )
+              : null,
         ),
       ),
     );
