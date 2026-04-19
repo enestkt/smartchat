@@ -33,7 +33,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   socket_io_client: ^2.0.3+1
-  fl_chart: ^1.2.0
+  fl_chart: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -43,5 +43,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+dependency_overrides:
+  vector_math: 2.2.0
 
 
