@@ -22,6 +22,7 @@ class _RelationshipDashboardScreenState extends State<RelationshipDashboardScree
   bool _isLoading = true;
   String _error = "";
   int _currentScore = 50;
+  String _currentStyle = "Formal (Resmi)";
   List<FlSpot> _spots = [];
   List<String> _dates = []; // X ekseninde göstermek için
 
@@ -67,6 +68,7 @@ class _RelationshipDashboardScreenState extends State<RelationshipDashboardScree
         setState(() {
          // Gelen veriyi önce 'num' (her iki sayı tipi) olarak kabul et, sonra int'e çevir
           _currentScore = (res["current_score"] as num? ?? 50).toInt();
+          _currentStyle = res["current_style"]?.toString() ?? "Formal (Resmi)";
           _spots = loadedSpots;
           _dates = loadedDates;
           _isLoading = false;
@@ -138,7 +140,7 @@ class _RelationshipDashboardScreenState extends State<RelationshipDashboardScree
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              _getRelationshipLevel(_currentScore),
+                              _currentStyle,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -189,12 +191,6 @@ class _RelationshipDashboardScreenState extends State<RelationshipDashboardScree
                   ),
                 ),
     );
-  }
-
-  String _getRelationshipLevel(int score) {
-    if (score <= 30) return "Formal";
-    if (score >= 71) return "Informal (Close)";
-    return "Neutral";
   }
 
   Widget _buildChart() {
