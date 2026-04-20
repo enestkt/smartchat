@@ -7,10 +7,10 @@ class AppTheme {
   AppTheme._();
 
   // ─── RENKLER ───────────────────────────────────────────────
-  static const Color primaryTeal = Color(0xFF008F9C);
-  static const Color darkTeal = Color(0xFF005C66);
-  static const Color accentCyan = Color(0xFF00B4D8);
-  static const Color lightCyan = Color(0xFF4DD0E1);
+  static const Color primaryColor = Color(0xFF4F46E5); // Indigo
+  static const Color darkColor = Color(0xFF312E81); // Deep Indigo
+  static const Color accentColor = Color(0xFF8B5CF6); // Violet
+  static const Color lightColor = Color(0xFFA78BFA); // Soft Violet
 
   // Surfaces
   static const Color surface = Color(0xFFF0F4F8);
@@ -37,17 +37,17 @@ class AppTheme {
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [darkTeal, primaryTeal, lightCyan],
+    colors: [darkColor, primaryColor, lightColor],
   );
 
   static const LinearGradient appBarGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [darkTeal, primaryTeal],
+    colors: [darkColor, primaryColor],
   );
 
   static const LinearGradient buttonGradient = LinearGradient(
-    colors: [primaryTeal, darkTeal],
+    colors: [primaryColor, darkColor],
   );
 
   // ─── GÖLGELER ─────────────────────────────────────────────
@@ -69,7 +69,7 @@ class AppTheme {
 
   static List<BoxShadow> buttonShadow = [
     BoxShadow(
-      color: primaryTeal.withOpacity(0.35),
+      color: primaryColor.withOpacity(0.35),
       blurRadius: 15,
       offset: const Offset(0, 8),
     ),
@@ -112,22 +112,22 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorSchemeSeed: primaryTeal,
+      colorSchemeSeed: primaryColor,
       scaffoldBackgroundColor: surface,
       textTheme: GoogleFonts.interTextTheme(),
       appBarTheme: const AppBarTheme(
-        backgroundColor: primaryTeal,
+        backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryTeal,
+        backgroundColor: primaryColor,
         foregroundColor: Colors.white,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryTeal,
+          backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusL),
@@ -160,7 +160,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorSchemeSeed: primaryTeal,
+      colorSchemeSeed: primaryColor,
       scaffoldBackgroundColor: darkSurface,
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
       appBarTheme: const AppBarTheme(
@@ -170,12 +170,12 @@ class AppTheme {
         centerTitle: false,
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryTeal,
+        backgroundColor: primaryColor,
         foregroundColor: Colors.white,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryTeal,
+          backgroundColor: primaryColor,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusL),

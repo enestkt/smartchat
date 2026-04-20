@@ -46,10 +46,10 @@ class _SignupScreenState extends State<SignupScreen>
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: AppTheme.darkTeal,
+      backgroundColor: AppTheme.darkColor,
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
+        decoration: BoxDecoration(gradient: AppTheme.primaryGradient),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -64,7 +64,7 @@ class _SignupScreenState extends State<SignupScreen>
                     Text(
                       "SmartChat",
                       style: GoogleFonts.poppins(
-                        color: Colors.white,
+                        color: AppTheme.cardColor(context),
                         fontSize: 42,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
@@ -86,17 +86,17 @@ class _SignupScreenState extends State<SignupScreen>
             const SizedBox(height: 40),
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: AppTheme.cardColor(context),
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(AppTheme.radiusXL),
                     topRight: Radius.circular(AppTheme.radiusXL),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black26,
+                      color: AppTheme.textColor(context).withValues(alpha: 0.15),
                       blurRadius: 20,
-                      offset: Offset(0, -5),
+                      offset: const Offset(0, -5),
                     ),
                   ],
                 ),
@@ -190,18 +190,18 @@ class _SignupScreenState extends State<SignupScreen>
                                       }
                                     },
                               child: auth.isLoading
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 25,
                                       height: 25,
                                       child: CircularProgressIndicator(
-                                        color: Colors.white,
+                                        color: AppTheme.cardColor(context),
                                         strokeWidth: 3,
                                       ),
                                     )
                                   : Text(
                                       "Kayıt Ol",
                                       style: GoogleFonts.poppins(
-                                        color: Colors.white,
+                                        color: AppTheme.cardColor(context),
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
                                         letterSpacing: 1,
@@ -217,13 +217,13 @@ class _SignupScreenState extends State<SignupScreen>
                             onPressed: () => Navigator.pushNamed(context, '/login'),
                             child: RichText(
                               text: TextSpan(
-                                style: GoogleFonts.inter(color: Colors.grey.shade600, fontSize: 15),
+                                style: GoogleFonts.inter(color: AppTheme.secondaryTextColor(context), fontSize: 15),
                                 children: [
                                   const TextSpan(text: "Zaten hesabınız var mı? "),
                                   TextSpan(
                                     text: "Giriş Yap",
                                     style: TextStyle(
-                                      color: AppTheme.primaryTeal,
+                                      color: AppTheme.primaryColor,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -252,19 +252,19 @@ class _SignupScreenState extends State<SignupScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF2A2A3A) : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+        border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.transparent : Colors.grey.shade200, width: 1.5),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
       child: TextField(
         controller: controller,
         obscureText: isPassword ? _obscurePassword : false,
-        style: GoogleFonts.inter(fontSize: 16),
+        style: GoogleFonts.inter(fontSize: 16, color: AppTheme.textColor(context)),
         decoration: InputDecoration(
-          icon: Icon(icon, color: Colors.grey.shade500),
+          icon: Icon(icon, color: AppTheme.secondaryTextColor(context)),
           hintText: hintText,
-          hintStyle: GoogleFonts.inter(color: Colors.grey.shade400),
+          hintStyle: GoogleFonts.inter(color: AppTheme.secondaryTextColor(context)),
           border: InputBorder.none,
           suffixIcon: isPassword
               ? IconButton(
@@ -272,7 +272,7 @@ class _SignupScreenState extends State<SignupScreen>
                     _obscurePassword
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
-                    color: Colors.grey.shade400,
+                    color: AppTheme.secondaryTextColor(context),
                     size: 22,
                   ),
                   onPressed: () =>

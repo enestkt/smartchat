@@ -49,9 +49,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _photoOption(Icons.camera_alt_rounded, "Kamera",
-                    AppTheme.accentCyan, () => Navigator.pop(ctx, ImageSource.camera)),
+                    AppTheme.accentColor, () => Navigator.pop(ctx, ImageSource.camera)),
                 _photoOption(Icons.photo_library_rounded, "Galeri",
-                    AppTheme.primaryTeal, () => Navigator.pop(ctx, ImageSource.gallery)),
+                    AppTheme.primaryColor, () => Navigator.pop(ctx, ImageSource.gallery)),
               ],
             ),
           ],
@@ -81,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Icon(icon, color: color, size: 28),
@@ -124,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryTeal,
+              backgroundColor: AppTheme.primaryColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: Text("Kaydet", style: GoogleFonts.inter(color: Colors.white)),
@@ -179,7 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : null,
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryTeal.withOpacity(0.3),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -202,10 +202,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                         ),
-                        child: const Center(
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                        child: Center(
+                          child: CircularProgressIndicator(color: AppTheme.cardColor(context), strokeWidth: 3),
                         ),
                       ),
                     ),
@@ -217,7 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryTeal,
+                        color: AppTheme.primaryColor,
                         shape: BoxShape.circle,
                         border: Border.all(color: AppTheme.surfaceColor(context), width: 3),
                       ),
@@ -264,19 +264,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       label: "Kullanıcı Adı",
                       value: auth.username ?? "-",
                     ),
-                    Divider(height: 1, color: Colors.grey.withOpacity(0.15)),
+                    Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
                     _infoTile(
                       icon: Icons.email_outlined,
                       label: "E-Posta",
                       value: auth.email ?? "-",
                     ),
-                    Divider(height: 1, color: Colors.grey.withOpacity(0.15)),
+                    Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
                     _infoTile(
                       icon: Icons.info_outline_rounded,
                       label: "Hakkımda",
                       value: auth.about ?? "Merhaba, SmartChat kullanıyorum!",
                       onTap: _editAbout,
-                      trailing: Icon(Icons.edit_rounded, size: 18, color: AppTheme.primaryTeal),
+                      trailing: Icon(Icons.edit_rounded, size: 18, color: AppTheme.primaryColor),
                     ),
                   ],
                 ),
@@ -297,7 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Text(
           AppTheme.initials(name ?? "U"),
           style: GoogleFonts.poppins(
-            color: Colors.white,
+            color: AppTheme.cardColor(context),
             fontSize: 42,
             fontWeight: FontWeight.bold,
           ),
@@ -322,10 +322,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppTheme.primaryTeal.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: AppTheme.primaryTeal, size: 22),
+              child: Icon(icon, color: AppTheme.primaryColor, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(

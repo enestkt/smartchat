@@ -77,7 +77,7 @@ class SettingsScreen extends StatelessWidget {
                                   child: Text(
                                     AppTheme.initials(auth.username ?? "U"),
                                     style: GoogleFonts.poppins(
-                                      color: Colors.white,
+                                      color: AppTheme.cardColor(context),
                                       fontSize: 22,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -88,7 +88,7 @@ class SettingsScreen extends StatelessWidget {
                                 child: Text(
                                   AppTheme.initials(auth.username ?? "U"),
                                   style: GoogleFonts.poppins(
-                                    color: Colors.white,
+                                    color: AppTheme.cardColor(context),
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -156,7 +156,7 @@ class SettingsScreen extends StatelessWidget {
                     subtitle: themeProvider.isDarkMode ? "Açık" : "Kapalı",
                     trailing: Switch.adaptive(
                       value: themeProvider.isDarkMode,
-                      activeColor: AppTheme.primaryTeal,
+                      activeTrackColor: AppTheme.primaryColor,
                       onChanged: (_) => themeProvider.toggleTheme(),
                     ),
                   ),
@@ -209,7 +209,7 @@ class SettingsScreen extends StatelessWidget {
                   _settingsTile(
                     context: context,
                     icon: Icons.chat_bubble_rounded,
-                    iconColor: AppTheme.primaryTeal,
+                    iconColor: AppTheme.primaryColor,
                     title: "Sohbet Ayarları",
                     subtitle: "Tema, duvar kağıdı, yazı boyutu",
                     onTap: () {
@@ -220,7 +220,7 @@ class SettingsScreen extends StatelessWidget {
                   _settingsTile(
                     context: context,
                     icon: Icons.auto_awesome_rounded,
-                    iconColor: AppTheme.accentCyan,
+                    iconColor: AppTheme.accentColor,
                     title: "AI Asistan Ayarları",
                     subtitle: "Akıllı yanıt, mesaj önerisi",
                     onTap: () {
@@ -376,7 +376,7 @@ class SettingsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.12),
+                color: iconColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(icon, color: iconColor, size: 22),
@@ -421,7 +421,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _divider() {
-    return Divider(height: 1, indent: 60, endIndent: 16, color: Colors.grey.withOpacity(0.15));
+    return Divider(height: 1, indent: 60, endIndent: 16, color: Colors.grey.withValues(alpha: 0.15));
   }
 
   void _showComingSoon(BuildContext context) {
@@ -429,7 +429,7 @@ class SettingsScreen extends StatelessWidget {
       SnackBar(
         content: Text("Yakında eklenecek!", style: GoogleFonts.inter()),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: AppTheme.primaryTeal,
+        backgroundColor: AppTheme.primaryColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),

@@ -419,7 +419,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     msg["text"],
                     style: GoogleFonts.inter(
                       fontSize: 15.5,
-                      color: AppTheme.textPrimary,
+                      color: AppTheme.textColor(context),
                       height: 1.4,
                     ),
                   ),
@@ -506,7 +506,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         const Padding(
                           padding: EdgeInsets.all(8),
                           child: CircularProgressIndicator(
-                            color: AppTheme.primaryTeal,
+                            color: AppTheme.primaryColor,
                             strokeWidth: 2.5,
                           ),
                         ),
@@ -523,7 +523,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           if (_smartRepliesLoading)
             const LinearProgressIndicator(
               minHeight: 2,
-              color: AppTheme.primaryTeal,
+              color: AppTheme.primaryColor,
               backgroundColor: Colors.transparent,
             ),
           if (_smartReplies != null && _smartReplies!.isNotEmpty)
@@ -587,17 +587,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     borderRadius: BorderRadius.circular(12),
                     gradient: widget.isGroup
                         ? const LinearGradient(
-                            colors: [AppTheme.accentCyan, AppTheme.primaryTeal])
+                            colors: [AppTheme.accentColor, AppTheme.primaryColor])
                         : AppTheme.avatarGradient(widget.receiverName),
                   ),
                   child: Center(
                     child: widget.isGroup
-                        ? const Icon(Icons.group_rounded,
-                            color: Colors.white, size: 20)
+                        ? Icon(Icons.group_rounded,
+                            color: AppTheme.cardColor(context), size: 20)
                         : Text(
                             AppTheme.initials(widget.receiverName),
                             style: GoogleFonts.poppins(
-                              color: Colors.white,
+                              color: AppTheme.cardColor(context),
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
                             ),
@@ -613,7 +613,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     Text(
                       widget.receiverName,
                       style: GoogleFonts.inter(
-                        color: Colors.white,
+                        color: AppTheme.cardColor(context),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -684,7 +684,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        border: Border.all(color: AppTheme.primaryTeal.withOpacity(0.15)),
+        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.15)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -702,11 +702,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryTeal.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.auto_awesome,
-                    color: AppTheme.primaryTeal, size: 18),
+                    color: AppTheme.primaryColor, size: 18),
               ),
               const SizedBox(width: 8),
               Text(
@@ -714,7 +714,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.textColor(context),
                 ),
               ),
               const Spacer(),
@@ -745,7 +745,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 _analysisChip(
                   icon: Icons.style_rounded,
                   label: _analysis!["style"],
-                  color: AppTheme.accentCyan,
+                  color: AppTheme.accentColor,
                 ),
 
               // Relationship style chip
@@ -753,7 +753,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 _analysisChip(
                   icon: Icons.people_rounded,
                   label: _analysis!["relationship_style"],
-                  color: AppTheme.primaryTeal,
+                  color: AppTheme.primaryColor,
                 ),
             ],
           ),
@@ -775,7 +775,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     child: Text(
                       _analysis!["punctuation_fixed"],
                       style: GoogleFonts.inter(
-                          fontSize: 13, color: AppTheme.textSecondary),
+                          fontSize: 13, color: AppTheme.secondaryTextColor(context)),
                     ),
                   ),
                 ],
@@ -833,7 +833,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.97),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        border: Border.all(color: AppTheme.accentCyan.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.accentColor.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -853,8 +853,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                   gradient: AppTheme.buttonGradient,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.auto_fix_high,
-                    color: Colors.white, size: 16),
+                child: Icon(Icons.auto_fix_high,
+                    color: AppTheme.cardColor(context), size: 16),
               ),
               const SizedBox(width: 8),
               Text(
@@ -862,7 +862,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.textColor(context),
                 ),
               ),
             ],
@@ -879,14 +879,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.primaryTeal.withOpacity(0.05),
+                color: AppTheme.primaryColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 _aiSuggestion!["completion"] ?? "",
                 style: GoogleFonts.inter(
                   fontSize: 14.5,
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.textColor(context),
                   height: 1.4,
                 ),
               ),
@@ -920,7 +920,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 icon: const Icon(Icons.check, size: 18),
                 label: Text("Kabul Et", style: GoogleFonts.inter()),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryTeal,
+                  backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -942,7 +942,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardColor(context),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -971,19 +971,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          AppTheme.primaryTeal.withOpacity(0.08),
-                          AppTheme.accentCyan.withOpacity(0.08),
+                          AppTheme.primaryColor.withOpacity(0.08),
+                          AppTheme.accentColor.withOpacity(0.08),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: AppTheme.primaryTeal.withOpacity(0.25),
+                        color: AppTheme.primaryColor.withOpacity(0.25),
                       ),
                     ),
                     child: Text(
                       reply,
                       style: GoogleFonts.inter(
-                        color: AppTheme.darkTeal,
+                        color: AppTheme.darkColor,
                         fontWeight: FontWeight.w600,
                         fontSize: 13.5,
                       ),
@@ -1005,7 +1005,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardColor(context),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -1021,12 +1021,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             // ➕ MEDIA
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: AppTheme.surfaceColor(context),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
                 icon: const Icon(Icons.add_rounded,
-                    color: AppTheme.primaryTeal, size: 24),
+                    color: AppTheme.primaryColor, size: 24),
                 onPressed: _openMediaSheet,
               ),
             ),
@@ -1039,7 +1039,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.surface,
+                  color: AppTheme.surfaceColor(context),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: TextField(
@@ -1067,12 +1067,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             // 🤖 AI TEST BUTTON
             Container(
               decoration: BoxDecoration(
-                color: AppTheme.accentCyan.withOpacity(0.1),
+                color: AppTheme.accentColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
                 icon: const Icon(Icons.auto_awesome_rounded, size: 22),
-                color: AppTheme.accentCyan,
+                color: AppTheme.accentColor,
                 onPressed: _aiLoading ? null : _testComplete,
               ),
             ),
@@ -1092,14 +1092,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryTeal.withOpacity(0.3),
+                        color: AppTheme.primaryColor.withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.send_rounded,
-                      color: Colors.white, size: 20),
+                  child: Icon(Icons.send_rounded,
+                      color: AppTheme.cardColor(context), size: 20),
                 ),
               ),
             ),
@@ -1139,7 +1139,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
+                  color: AppTheme.textColor(context),
                 ),
               ),
               const SizedBox(height: 24),
@@ -1147,9 +1147,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _mediaOption(
-                      Icons.camera_alt_rounded, "Kamera", AppTheme.accentCyan, _captureImage),
+                      Icons.camera_alt_rounded, "Kamera", AppTheme.accentColor, _captureImage),
                   _mediaOption(
-                      Icons.photo_library_rounded, "Galeri", AppTheme.primaryTeal, _pickImage),
+                      Icons.photo_library_rounded, "Galeri", AppTheme.primaryColor, _pickImage),
                 ],
               ),
             ],
@@ -1182,7 +1182,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         const SizedBox(height: 10),
         Text(label,
             style: GoogleFonts.inter(
-                fontSize: 13, color: AppTheme.textSecondary)),
+                fontSize: 13, color: AppTheme.secondaryTextColor(context))),
       ],
     );
   }

@@ -70,7 +70,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
     final senderId = context.read<AuthProvider>().userId!;
 
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.surfaceColor(context),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: Container(
@@ -81,7 +81,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
             title: Text(
               "Kişi Ara",
               style: GoogleFonts.poppins(
-                color: Colors.white,
+                color: AppTheme.cardColor(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -96,7 +96,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.cardColor(context),
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
                 boxShadow: AppTheme.cardShadow,
               ),
@@ -110,12 +110,12 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                   hintStyle: GoogleFonts.inter(color: AppTheme.textHint),
                   border: InputBorder.none,
                   icon: const Icon(Icons.search_rounded,
-                      color: AppTheme.primaryTeal),
+                      color: AppTheme.primaryColor),
                   suffixIcon: IconButton(
                     icon: Container(
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryTeal,
+                        color: AppTheme.primaryColor,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(Icons.arrow_forward_rounded,
@@ -131,7 +131,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
 
             // ⏳ LOADING
             if (isLoading)
-              const CircularProgressIndicator(color: AppTheme.primaryTeal),
+              const CircularProgressIndicator(color: AppTheme.primaryColor),
 
             // ❌ ERROR
             if (!isLoading && error != null)
@@ -153,7 +153,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                       error!,
                       style: GoogleFonts.inter(
                         fontSize: 16,
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.secondaryTextColor(context),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -175,7 +175,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
     return Container(
       margin: const EdgeInsets.only(top: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardColor(context),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         boxShadow: AppTheme.cardShadow,
       ),
@@ -208,7 +208,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                     gradient: AppTheme.avatarGradient(username),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryTeal.withOpacity(0.2),
+                        color: AppTheme.primaryColor.withOpacity(0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -218,7 +218,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                     child: Text(
                       AppTheme.initials(username),
                       style: GoogleFonts.poppins(
-                        color: Colors.white,
+                        color: AppTheme.cardColor(context),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -238,7 +238,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.textColor(context),
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -246,7 +246,7 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                         "Sohbet başlatmak için dokun",
                         style: GoogleFonts.inter(
                           fontSize: 13,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.secondaryTextColor(context),
                         ),
                       ),
                     ],
@@ -257,11 +257,11 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryTeal.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.chat_rounded,
-                      color: AppTheme.primaryTeal, size: 22),
+                      color: AppTheme.primaryColor, size: 22),
                 ),
               ],
             ),

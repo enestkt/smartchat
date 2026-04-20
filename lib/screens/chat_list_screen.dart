@@ -81,7 +81,7 @@ class _ChatListScreenState extends State<ChatListScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.surfaceColor(context),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
@@ -127,7 +127,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                     value: 'settings',
                     child: Row(
                       children: [
-                        Icon(Icons.settings_rounded, color: AppTheme.primaryTeal, size: 20),
+                        Icon(Icons.settings_rounded, color: AppTheme.primaryColor, size: 20),
                         SizedBox(width: 12),
                         Text("Ayarlar"),
                       ],
@@ -150,12 +150,12 @@ class _ChatListScreenState extends State<ChatListScreen>
         ],
         body: isLoading
             ? const Center(
-                child: CircularProgressIndicator(color: AppTheme.primaryTeal),
+                child: CircularProgressIndicator(color: AppTheme.primaryColor),
               )
             : partners.isEmpty
                 ? _buildEmptyState()
                 : RefreshIndicator(
-                    color: AppTheme.primaryTeal,
+                    color: AppTheme.primaryColor,
                     onRefresh: _loadPartners,
                     child: ListView.builder(
                       padding: const EdgeInsets.only(top: 8, bottom: 100),
@@ -189,7 +189,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.cardColor(context),
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: AppTheme.softShadow,
                       ),
@@ -200,7 +200,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                     const SizedBox(width: 8),
                     FloatingActionButton.small(
                       heroTag: "group",
-                      backgroundColor: AppTheme.accentCyan,
+                      backgroundColor: AppTheme.accentColor,
                       onPressed: () async {
                         _toggleFab();
                         await Navigator.push(
@@ -234,7 +234,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.cardColor(context),
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: AppTheme.softShadow,
                       ),
@@ -245,7 +245,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                     const SizedBox(width: 8),
                     FloatingActionButton.small(
                       heroTag: "contact",
-                      backgroundColor: AppTheme.primaryTeal,
+                      backgroundColor: AppTheme.primaryColor,
                       onPressed: () async {
                         _toggleFab();
                         await Navigator.pushNamed(context, "/search");
@@ -264,7 +264,7 @@ class _ChatListScreenState extends State<ChatListScreen>
           // Ana FAB
           FloatingActionButton(
             heroTag: "main",
-            backgroundColor: AppTheme.primaryTeal,
+            backgroundColor: AppTheme.primaryColor,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -289,13 +289,13 @@ class _ChatListScreenState extends State<ChatListScreen>
           Container(
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: AppTheme.primaryTeal.withOpacity(0.1),
+              color: AppTheme.primaryColor.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.chat_bubble_outline_rounded,
               size: 56,
-              color: AppTheme.primaryTeal,
+              color: AppTheme.primaryColor,
             ),
           ),
           const SizedBox(height: 24),
@@ -304,7 +304,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             style: GoogleFonts.poppins(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimary,
+              color: AppTheme.textColor(context),
             ),
           ),
           const SizedBox(height: 8),
@@ -313,7 +313,7 @@ class _ChatListScreenState extends State<ChatListScreen>
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 15,
-              color: AppTheme.textSecondary,
+              color: AppTheme.secondaryTextColor(context),
               height: 1.5,
             ),
           ),
@@ -351,7 +351,7 @@ class _ChatListScreenState extends State<ChatListScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppTheme.cardColor(context),
               borderRadius: BorderRadius.circular(AppTheme.radiusM),
               boxShadow: AppTheme.softShadow,
             ),
@@ -373,7 +373,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.textColor(context),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -384,7 +384,7 @@ class _ChatListScreenState extends State<ChatListScreen>
                         lastMsg,
                         style: GoogleFonts.inter(
                           fontSize: 14,
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.secondaryTextColor(context),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -426,14 +426,14 @@ class _ChatListScreenState extends State<ChatListScreen>
         borderRadius: BorderRadius.circular(16),
         gradient: isGroup
             ? const LinearGradient(
-                colors: [AppTheme.accentCyan, AppTheme.primaryTeal],
+                colors: [AppTheme.accentColor, AppTheme.primaryColor],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
             : AppTheme.avatarGradient(name),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryTeal.withOpacity(0.2),
+            color: AppTheme.primaryColor.withOpacity(0.2),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
