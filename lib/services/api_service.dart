@@ -191,4 +191,20 @@ class ApiService {
     );
     return Map<String, dynamic>.from(res.data);
   }
+
+  // -------------------------------------------------------------
+  // MOOD FORECAST → /mood_forecast
+  // -------------------------------------------------------------
+  Future<Map<String, dynamic>> getMoodForecast({
+    required int senderId,
+    required int receiverId,
+  }) async {
+    try {
+      final res = await _dio.get("/mood_forecast/$senderId/$receiverId");
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      print("getMoodForecast error: $e");
+      return {"mood": "neutral", "warning": ""};
+    }
+  }
 }

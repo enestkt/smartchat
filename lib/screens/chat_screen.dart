@@ -49,6 +49,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   List<String>? _smartReplies;
   bool _smartRepliesLoading = false;
 
+  Map<String, dynamic>? _moodForecast;
+
   late AnimationController _sendBtnAnim;
 
   @override
@@ -62,6 +64,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       value: 1.0,
     );
     _loadMessages();
+    if (!widget.isGroup) {
+      _fetchMoodForecast();
+    }
     _setupSocket();
   }
 
@@ -121,6 +126,22 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       debugPrint("LOAD MESSAGES ERROR: $e");
       if (!mounted) return;
       _showError("Mesajlar yüklenemedi.");
+    }
+  }
+
+  Future<void> _fetchMoodForecast() async {
+    try {
+      final res = await ApiService().getMoodForecast(
+        senderId: widget.senderId,
+        receiverId: widget.receiverId,
+      );
+      if (mounted && res["mood"] != "neutral") {
+        setState(() {
+          _moodForecast = res;
+        });
+      }
+    } catch (e) {
+      debugPrint("MOOD FORECAST ERROR: $e");
     }
   }
 
@@ -569,6 +590,47 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       appBar: _buildAppBar(),
       body: Column(
         children: [
+          // Mood Forecast Banner
+          if (_moodForecast != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: _moodForecast!["mood"] == "negative" 
+                  ? Colors.orange.shade100 
+                  : Colors.green.shade100,
+              child: Row(
+                children: [
+                  Icon(
+                    _moodForecast!["mood"] == "negative" 
+                        ? Icons.warning_amber_rounded 
+                        : Icons.mood_rounded,
+                    color: _moodForecast!["mood"] == "negative" 
+                        ? Colors.orange.shade800 
+                        : Colors.green.shade800,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _moodForecast!["warning"],
+                      style: GoogleFonts.inter(
+                        color: _moodForecast!["mood"] == "negative" 
+                            ? Colors.orange.shade900 
+                            : Colors.green.shade900,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    color: Colors.black54,
+                    onPressed: () => setState(() => _moodForecast = null),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+            
           // 1. Mesajlar + AI panelleri
           Expanded(
             child: Stack(

@@ -114,8 +114,8 @@ class _LoginScreenState extends State<LoginScreen>
                           // ── EMAIL INPUT ──
                           _buildInputField(
                             controller: emailC,
-                            hintText: "E-Posta Adresi",
-                            icon: Icons.email_outlined,
+                            hintText: "E-Posta Adresi veya Kullanıcı Adı",
+                            icon: Icons.person_outline,
                           ),
                           const SizedBox(height: 20),
 
@@ -155,11 +155,7 @@ class _LoginScreenState extends State<LoginScreen>
 
                                       // ── Validasyon ──
                                       if (email.isEmpty || pass.isEmpty) {
-                                        _showSnack(context, "E-posta ve şifre boş bırakılamaz.");
-                                        return;
-                                      }
-                                      if (!email.contains('@') || !email.contains('.')) {
-                                        _showSnack(context, "Geçerli bir e-posta adresi girin.");
+                                        _showSnack(context, "Kullanıcı adı/e-posta ve şifre boş bırakılamaz.");
                                         return;
                                       }
                                       if (pass.length < 3) {
