@@ -150,34 +150,41 @@ class _LoginScreenState extends State<LoginScreen>
                               onPressed: auth.isLoading
                                   ? null
                                   : () async {
-                                      final ok = await context
-                                          .read<AuthProvider>()
-                                          .login(
-                                            emailC.text.trim(),
-                                            passC.text.trim(),
+                                      final email = emailC.text.trim();
+                                      final pass = passC.text.trim();
+
+                                      // ── Validasyon ──
+                                      if (email.isEmpty || pass.isEmpty) {
+                                        _showSnack(context, "E-posta ve şifre boş bırakılamaz.");
+                                        return;
+                                      }
+                                      if (!email.contains('@') || !email.contains('.')) {
+                                        _showSnack(context, "Geçerli bir e-posta adresi girin.");
+                                        return;
+                                      }
+                                      if (pass.length < 3) {
+                                        _showSnack(context, "Şifre en az 3 karakter olmalı.");
+                                        return;
+                                      }
+
+                                      try {
+                                        final ok = await context
+                                            .read<AuthProvider>()
+                                            .login(email, pass);
+
+                                        if (!mounted) return;
+
+                                        if (ok) {
+                                          Navigator.pushReplacementNamed(context, '/chats');
+                                        } else {
+                                          _showSnack(
+                                            context,
+                                            context.read<AuthProvider>().lastError ?? "Geçersiz e-posta veya şifre!",
                                           );
-
-                                      if (!mounted) return;
-
-                                      if (ok) {
-                                        Navigator.pushReplacementNamed(
-                                            context, '/chats');
-                                      } else {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: const Text(
-                                                "Geçersiz e-posta veya şifre!"),
-                                            backgroundColor:
-                                                AppTheme.negative,
-                                            behavior:
-                                                SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                          ),
-                                        );
+                                        }
+                                      } catch (e) {
+                                        if (!mounted) return;
+                                        _showSnack(context, "Bağlantı hatası. Sunucu erişilebilir durumda mı?");
                                       }
                                     },
                               child: auth.isLoading
@@ -236,6 +243,18 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showSnack(BuildContext ctx, String msg, {bool isError = true}) {
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? AppTheme.negative : AppTheme.positive,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

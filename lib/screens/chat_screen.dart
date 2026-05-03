@@ -94,28 +94,59 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _loadMessages() async {
-    final data = await ChatService().fetchMessages(
-      widget.senderId,
-      widget.isGroup ? 0 : widget.receiverId,
-      groupId: widget.isGroup ? widget.receiverId : null,
-    );
+    try {
+      final data = await ChatService().fetchMessages(
+        widget.senderId,
+        widget.isGroup ? 0 : widget.receiverId,
+        groupId: widget.isGroup ? widget.receiverId : null,
+      );
 
-    setState(() {
-      _messages =
-          data.map<Map<String, dynamic>>((m) => _formatMessage(m)).toList();
-    });
+      if (!mounted) return;
+      setState(() {
+        _messages =
+            data.map<Map<String, dynamic>>((m) => _formatMessage(m)).toList();
+      });
 
-    _scrollToBottom();
+      _scrollToBottom();
 
-    // Sohbet açıldığında, son mesaj karşı taraftansa Akıllı Yanıtları getir
-    if (_messages.isNotEmpty && widget.isGroup == false) {
-      final lastMsg = _messages.last;
-      if (lastMsg["isMe"] == false &&
-          lastMsg["text"] != null &&
-          (lastMsg["text"] as String).trim().isNotEmpty) {
-        _fetchSmartReplies(lastMsg["text"]);
+      if (_messages.isNotEmpty && widget.isGroup == false) {
+        final lastMsg = _messages.last;
+        if (lastMsg["isMe"] == false &&
+            lastMsg["text"] != null &&
+            (lastMsg["text"] as String).trim().isNotEmpty) {
+          _fetchSmartReplies(lastMsg["text"]);
+        }
       }
+    } catch (e) {
+      debugPrint("LOAD MESSAGES ERROR: $e");
+      if (!mounted) return;
+      _showError("Mesajlar yüklenemedi.");
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _showInfo(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppTheme.primaryColor,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   // ----------------------------------------------------------
@@ -256,15 +287,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         receiverUsername: widget.receiverName,
       );
 
-      debugPrint("COMPLETE RESPONSE => $res");
-
-      setState(() {
-        _aiSuggestion = res;
-      });
-    } catch (e) {
+      if (!mounted) return;
+      setState(() => _aiSuggestion = res);
+    } on Exception catch (e) {
       debugPrint("COMPLETE ERROR => $e");
+      if (!mounted) return;
+      _showError("AI önerisi alınamadı. Lütfen tekrar deneyin.");
     } finally {
-      setState(() => _aiLoading = false);
+      if (mounted) setState(() => _aiLoading = false);
     }
   }
 
@@ -307,7 +337,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    // Buton animasyonu
     _sendBtnAnim.reverse().then((_) => _sendBtnAnim.forward());
 
     setState(() {
@@ -315,31 +344,40 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _smartReplies = null;
     });
 
+    // Mesajı önce optimistic olarak ekle
     final localMessage = {
       "text": text,
       "isMe": true,
       "time": _formatTime(DateTime.now().toString()),
     };
 
-    setState(() {
-      _messages.add(localMessage);
-    });
-
+    setState(() => _messages.add(localMessage));
     _messageController.clear();
     _scrollToBottom();
 
-    if (widget.isGroup) {
-      _socketService.socket?.emit("send_message", {
-        "sender_id": widget.senderId,
-        "group_id": widget.receiverId,
-        "content": text,
+    try {
+      if (widget.isGroup) {
+        _socketService.socket?.emit("send_message", {
+          "sender_id": widget.senderId,
+          "group_id": widget.receiverId,
+          "content": text,
+        });
+      } else {
+        _socketService.sendPrivateMessage(
+          senderId: widget.senderId,
+          receiverId: widget.receiverId,
+          content: text,
+        );
+      }
+    } catch (e) {
+      debugPrint("SEND MESSAGE ERROR: $e");
+      if (!mounted) return;
+      // Gönderilemedi — mesajı listeden geri al, kullanıcıya bildir
+      setState(() {
+        _messages.remove(localMessage);
+        _messageController.text = text;
       });
-    } else {
-      _socketService.sendPrivateMessage(
-        senderId: widget.senderId,
-        receiverId: widget.receiverId,
-        content: text,
-      );
+      _showError("Mesaj gönderilemedi. Bağlantınızı kontrol edin.");
     }
   }
 
@@ -453,14 +491,71 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         url,
         width: 200,
         fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return SizedBox(
+            width: 200,
+            height: 120,
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
+                    : null,
+                color: AppTheme.primaryColor,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: 200,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.broken_image_outlined, color: Colors.grey, size: 28),
+                SizedBox(height: 4),
+                Text("Resim yüklenemedi",
+                    style: TextStyle(fontSize: 11, color: Colors.grey)),
+              ],
+            ),
+          );
+        },
       );
     }
 
-    return Image.file(
-      File(imagePath),
-      width: 200,
-      fit: BoxFit.cover,
-    );
+    try {
+      return Image.file(
+        File(imagePath),
+        width: 200,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: 200,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.broken_image_outlined,
+                color: Colors.grey, size: 28),
+          );
+        },
+      );
+    } catch (e) {
+      return Container(
+        width: 200,
+        height: 80,
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.broken_image_outlined, color: Colors.grey),
+      );
+    }
   }
 
   // ----------------------------------------------------------

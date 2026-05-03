@@ -45,12 +45,35 @@ class _ChatListScreenState extends State<ChatListScreen>
 
     if (userId == null) return;
 
-    final data = await ChatService().getChatPartners(userId);
+    try {
+      final data = await ChatService().getChatPartners(userId);
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        partners = data;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isLoading = false);
+      _showError("Sohbetler yüklenemedi. İnternet bağlantınızı kontrol edin.");
+    }
+  }
 
-    setState(() {
-      isLoading = false;
-      partners = data;
-    });
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        action: SnackBarAction(
+          label: "Tekrar Dene",
+          textColor: Colors.white,
+          onPressed: _loadPartners,
+        ),
+      ),
+    );
   }
 
   // 🔥 LOGOUT

@@ -24,26 +24,36 @@ class ChatService {
 
   /// Mesaj yükleme
   Future<List<dynamic>> fetchMessages(int senderId, int receiverId, {int? groupId}) async {
-    final query = <String, dynamic>{
-      "sender_id": senderId,
-    };
-    if (groupId != null) {
-      query["group_id"] = groupId;
-    } else {
-      query["receiver_id"] = receiverId;
+    try {
+      final query = <String, dynamic>{"sender_id": senderId};
+      if (groupId != null) {
+        query["group_id"] = groupId;
+      } else {
+        query["receiver_id"] = receiverId;
+      }
+      final res = await _dio.get("/messages", queryParameters: query);
+      return res.data["messages"] ?? [];
+    } on DioException catch (e) {
+      print("fetchMessages DioError: ${e.response?.statusCode} ${e.message}");
+      rethrow;
+    } catch (e) {
+      print("fetchMessages error: $e");
+      rethrow;
     }
-    
-    final res = await _dio.get(
-      "/messages",
-      queryParameters: query,
-    );
-    return res.data["messages"] ?? [];
   }
 
   /// Chat partner listesi
   Future<List<dynamic>> getChatPartners(int userId) async {
-    final res = await _dio.get("/chat_partners/$userId");
-    return res.data ?? [];
+    try {
+      final res = await _dio.get("/chat_partners/$userId");
+      return res.data ?? [];
+    } on DioException catch (e) {
+      print("getChatPartners DioError: ${e.response?.statusCode} ${e.message}");
+      rethrow;
+    } catch (e) {
+      print("getChatPartners error: $e");
+      rethrow;
+    }
   }
 
   /// Mesaj gönderme (text)

@@ -53,16 +53,24 @@ class _SearchUserScreenState extends State<SearchUserScreen> {
       foundUser = null;
     });
 
-    final result = await ChatService().searchUser(username);
-
-    setState(() {
-      isLoading = false;
-      if (result == null) {
-        error = "Kullanıcı bulunamadı";
-      } else {
-        foundUser = result;
-      }
-    });
+    try {
+      final result = await ChatService().searchUser(username);
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        if (result == null) {
+          error = "Kullanıcı bulunamadı";
+        } else {
+          foundUser = result;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        error = "Bağlantı hatası. Tekrar deneyin.";
+      });
+    }
   }
 
   @override

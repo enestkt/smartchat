@@ -154,39 +154,43 @@ class _SignupScreenState extends State<SignupScreen>
                               onPressed: auth.isLoading
                                   ? null
                                   : () async {
-                                      final provider = context.read<AuthProvider>();
+                                      final username = usernameC.text.trim();
+                                      final email = emailC.text.trim();
+                                      final pass = passC.text.trim();
 
-                                      final ok = await provider.signup(
-                                        usernameC.text.trim(),
-                                        emailC.text.trim(),
-                                        passC.text.trim(),
-                                      );
+                                      // ── Validasyon ──
+                                      if (username.isEmpty || email.isEmpty || pass.isEmpty) {
+                                        _showSnack(context, "Tüm alanları doldurun.");
+                                        return;
+                                      }
+                                      if (username.length < 3) {
+                                        _showSnack(context, "Kullanıcı adı en az 3 karakter olmalı.");
+                                        return;
+                                      }
+                                      if (!email.contains('@') || !email.contains('.')) {
+                                        _showSnack(context, "Geçerli bir e-posta adresi girin.");
+                                        return;
+                                      }
+                                      if (pass.length < 6) {
+                                        _showSnack(context, "Şifre en az 6 karakter olmalı.");
+                                        return;
+                                      }
 
-                                      if (!mounted) return;
+                                      try {
+                                        final provider = context.read<AuthProvider>();
+                                        final ok = await provider.signup(username, email, pass);
 
-                                      if (ok) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: const Text("Kayıt başarılı! Giriş yapabilirsiniz."),
-                                            backgroundColor: AppTheme.positive,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                          ),
-                                        );
-                                        Navigator.pop(context);
-                                      } else {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(provider.lastError ?? "Kayıt başarısız"),
-                                            backgroundColor: AppTheme.negative,
-                                            behavior: SnackBarBehavior.floating,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                          ),
-                                        );
+                                        if (!mounted) return;
+
+                                        if (ok) {
+                                          _showSnack(context, "Kayıt başarılı! Giriş yapabilirsiniz.", isError: false);
+                                          Navigator.pop(context);
+                                        } else {
+                                          _showSnack(context, provider.lastError ?? "Kayıt başarısız.");
+                                        }
+                                      } catch (e) {
+                                        if (!mounted) return;
+                                        _showSnack(context, "Bağlantı hatası. Sunucu erişilebilir durumda mı?");
                                       }
                                     },
                               child: auth.isLoading
@@ -240,6 +244,18 @@ class _SignupScreenState extends State<SignupScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showSnack(BuildContext ctx, String msg, {bool isError = true}) {
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? AppTheme.negative : AppTheme.positive,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

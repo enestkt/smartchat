@@ -100,7 +100,41 @@ class _RelationshipDashboardScreenState extends State<RelationshipDashboardScree
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _turquoise))
           : _error.isNotEmpty
-              ? Center(child: Text("Error: $_error", style: const TextStyle(color: Colors.red)))
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Veriler yüklenemedi",
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _error,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() { _isLoading = true; _error = ""; });
+                            _fetchHistory();
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text("Tekrar Dene"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _turquoise,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               : SingleChildScrollView(
                   child: Column(
                     children: [
