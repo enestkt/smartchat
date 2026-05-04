@@ -12,7 +12,7 @@ class SocketService {
 
     try {
       _socket = IO.io(
-        'http://10.0.2.2:5000',
+        'http://10.0.2.2:9000',
         IO.OptionBuilder()
             .setTransports(['websocket'])
             .disableAutoConnect()

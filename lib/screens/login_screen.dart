@@ -206,6 +206,101 @@ class _LoginScreenState extends State<LoginScreen>
 
                           const SizedBox(height: 30),
 
+                          // ── SSO DIVIDER ──
+                          Row(
+                            children: [
+                              Expanded(child: Divider(color: AppTheme.secondaryTextColor(context).withValues(alpha: 0.4))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Text(
+                                  "veya",
+                                  style: GoogleFonts.inter(
+                                    color: AppTheme.secondaryTextColor(context),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              Expanded(child: Divider(color: AppTheme.secondaryTextColor(context).withValues(alpha: 0.4))),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ── GOOGLE SSO ──
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.grey.shade300),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              onPressed: auth.isLoading ? null : () => _loginWithSSO(context, 'google'),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    "G",
+                                    style: TextStyle(
+                                      color: Color(0xFFEA4335),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    "Google ile Giriş Yap",
+                                    style: GoogleFonts.inter(
+                                      color: AppTheme.textColor(context),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // ── MICROSOFT SSO ──
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.grey.shade300),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              onPressed: auth.isLoading ? null : () => _loginWithSSO(context, 'microsoft'),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    "⊞",
+                                    style: TextStyle(
+                                      color: Color(0xFF00A4EF),
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    "Microsoft ile Giriş Yap",
+                                    style: GoogleFonts.inter(
+                                      color: AppTheme.textColor(context),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
                           // ── SIGNUP LINK ──
                           TextButton(
                             onPressed: () =>
@@ -241,6 +336,21 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _loginWithSSO(BuildContext context, String provider) async {
+    try {
+      final ok = await context.read<AuthProvider>().loginWithSSO(provider);
+      if (!mounted) return;
+      if (ok) {
+        Navigator.pushReplacementNamed(context, '/chats');
+      } else {
+        _showSnack(context, context.read<AuthProvider>().lastError ?? 'SSO giriş başarısız');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack(context, 'SSO bağlantı hatası. Sunucu erişilebilir mi?');
+    }
   }
 
   void _showSnack(BuildContext ctx, String msg, {bool isError = true}) {

@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 
 class ChatService {
-  static const String baseUrl = "http://10.0.2.2:5000";
+  static const String baseUrl = "http://10.0.2.2:9000";
 
   final Dio _dio = Dio(BaseOptions(
     baseUrl: baseUrl,

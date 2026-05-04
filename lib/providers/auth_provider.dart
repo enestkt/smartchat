@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:app_links/app_links.dart';
 import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -163,6 +166,73 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print("UPDATE ABOUT ERROR -> $e");
+    }
+  }
+
+  // ─── SSO LOGIN ───
+  Future<bool> loginWithSSO(String provider) async {
+    _isLoading = true;
+    lastError = null;
+    notifyListeners();
+
+    try {
+      final appLinks = AppLinks();
+
+      // Chrome açılmadan ÖNCE deep link dinlemeye başla
+      final linkFuture = appLinks.uriLinkStream
+          .where((uri) => uri.scheme == 'smartchat')
+          .first
+          .timeout(const Duration(minutes: 3));
+
+      // Sistem tarayıcısında (Chrome) aç — Google WebView'ı engeller, Chrome'u engellemez
+      await launchUrl(
+        Uri.parse('${ApiService.baseUrl}/auth/$provider'),
+        mode: LaunchMode.externalApplication,
+      );
+
+      // Backend callback'ini bekle
+      final callbackUri = await linkFuture;
+
+      final error = callbackUri.queryParameters['error'];
+      if (error != null) {
+        lastError = 'SSO hatası: $error';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      final userIdStr = callbackUri.queryParameters['user_id'];
+      if (userIdStr == null) {
+        lastError = 'SSO: user_id alınamadı';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      _userId = int.tryParse(userIdStr);
+      if (_userId == null) {
+        lastError = 'Geçersiz user_id';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      await _storage.write(key: 'user_id', value: _userId.toString());
+      await loadProfile();
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } on TimeoutException {
+      lastError = 'SSO zaman aşımı. Tekrar deneyin.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      lastError = 'SSO bağlantı hatası: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     }
   }
 
