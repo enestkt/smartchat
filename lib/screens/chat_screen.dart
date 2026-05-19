@@ -46,10 +46,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _aiSuggestion;
   bool _aiLoading = false;
 
-  List<String>? _smartReplies;
+  List<Map<String, dynamic>>? _smartReplies;
   bool _smartRepliesLoading = false;
 
   Map<String, dynamic>? _moodForecast;
+  Map<String, dynamic>? _conversationSummary;
+  bool _summaryLoading = false;
+
+  List<Map<String, dynamic>>? _rephraseVersions;
+  bool _rephraseLoading = false;
 
   late AnimationController _sendBtnAnim;
 
@@ -337,11 +342,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
       if (mounted) {
         setState(() {
-          _smartReplies = replies;
+          _smartReplies = replies.isNotEmpty ? replies : null;
         });
       }
     } catch (e) {
-      print("fetch smart replies error: $e");
+      debugPrint("fetch smart replies error: $e");
     } finally {
       if (mounted) {
         setState(() {
@@ -349,6 +354,403 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         });
       }
     }
+  }
+
+  // ----------------------------------------------------------
+  // AI BUTON MENÜSÜ — Complete vs Rephrase
+  // ----------------------------------------------------------
+  void _openAiMenu() {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) {
+      _showError("Önce bir şeyler yaz.");
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.cardColor(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "AI Asistan",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppTheme.textColor(context),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _aiMenuOption(
+                icon: Icons.auto_fix_high_rounded,
+                color: AppTheme.accentColor,
+                title: "AI Önerisi",
+                subtitle: "Mesajını ilişki stiline göre yeniden yaz",
+                onTap: () {
+                  Navigator.pop(context);
+                  _testComplete();
+                },
+              ),
+              const SizedBox(height: 10),
+              _aiMenuOption(
+                icon: Icons.edit_note_rounded,
+                color: AppTheme.primaryColor,
+                title: "Nasıl Söylesem?",
+                subtitle: "3 farklı tonda versiyon üret: nazik, doğrudan, esprili",
+                onTap: () {
+                  Navigator.pop(context);
+                  _fetchRephrase();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _aiMenuOption({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppTheme.textColor(context),
+                        )),
+                    Text(subtitle,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppTheme.secondaryTextColor(context),
+                        )),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 14, color: Colors.grey.shade400),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
+  // REPHRASE — "Nasıl Söylesem?"
+  // ----------------------------------------------------------
+  Future<void> _fetchRephrase() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _rephraseLoading = true;
+      _rephraseVersions = null;
+      _aiSuggestion = null;
+    });
+
+    try {
+      final versions = await ApiService().getRephrase(
+        text: text,
+        senderId: widget.senderId,
+        receiverId: widget.receiverId,
+      );
+      if (!mounted) return;
+      setState(() => _rephraseVersions = versions);
+    } on Exception catch (e) {
+      debugPrint("REPHRASE ERROR: $e");
+      if (!mounted) return;
+      _showError("Versiyon üretilemedi. Lütfen tekrar deneyin.");
+    } finally {
+      if (mounted) setState(() => _rephraseLoading = false);
+    }
+  }
+
+  // ----------------------------------------------------------
+  // CONVERSATION SUMMARY
+  // ----------------------------------------------------------
+  Future<void> _fetchConversationSummary() async {
+    setState(() => _summaryLoading = true);
+    try {
+      final result = await ApiService().getConversationSummary(
+        senderId: widget.senderId,
+        receiverId: widget.receiverId,
+      );
+      if (!mounted) return;
+      setState(() => _conversationSummary = result);
+      _showSummarySheet();
+    } catch (e) {
+      debugPrint("SUMMARY ERROR: $e");
+      if (!mounted) return;
+      _showError("Özet alınamadı. Lütfen tekrar deneyin.");
+    } finally {
+      if (mounted) setState(() => _summaryLoading = false);
+    }
+  }
+
+  void _showSummarySheet() {
+    if (_conversationSummary == null) return;
+    final s = _conversationSummary!;
+
+    final moodColor = s["mood"] == "pozitif"
+        ? Colors.green.shade600
+        : s["mood"] == "negatif"
+            ? Colors.red.shade600
+            : s["mood"] == "karışık"
+                ? Colors.orange.shade700
+                : Colors.blueGrey.shade600;
+
+    final moodIcon = s["mood"] == "pozitif"
+        ? Icons.sentiment_satisfied_alt_rounded
+        : s["mood"] == "negatif"
+            ? Icons.sentiment_dissatisfied_rounded
+            : s["mood"] == "karışık"
+                ? Icons.sentiment_neutral_rounded
+                : Icons.sentiment_neutral_rounded;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.cardColor(context),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Başlık
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.buttonGradient,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.summarize_rounded,
+                        color: AppTheme.cardColor(context), size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Konuşma Özeti",
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            color: AppTheme.textColor(context),
+                          ),
+                        ),
+                        if (s["date_from"] != null && s["date_from"] != "")
+                          Text(
+                            "${s["date_from"]} – ${s["date_to"]}  •  ${s["message_count"]} mesaj",
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: AppTheme.secondaryTextColor(context),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Mood badge
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: moodColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: moodColor.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(moodIcon, size: 15, color: moodColor),
+                        const SizedBox(width: 4),
+                        Text(
+                          s["mood"] ?? "",
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: moodColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 18),
+
+              // Özet metni
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppTheme.primaryColor.withOpacity(0.12)),
+                ),
+                child: Text(
+                  s["summary"] ?? "",
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: AppTheme.textColor(context),
+                  ),
+                ),
+              ),
+
+              // Konular
+              if (s["topics"] != null &&
+                  (s["topics"] as List).isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text(
+                  "Konular",
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppTheme.secondaryTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: (s["topics"] as List).map((topic) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: AppTheme.accentColor.withOpacity(0.25)),
+                      ),
+                      child: Text(
+                        topic.toString(),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.accentColor,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+
+              // Öne çıkan alıntı
+              if (s["highlight"] != null &&
+                  s["highlight"].toString().isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.format_quote_rounded,
+                          color: Colors.amber.shade700, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s["highlight"],
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontStyle: FontStyle.italic,
+                            height: 1.4,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   // ----------------------------------------------------------
@@ -659,7 +1061,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_analysis != null) _aiPanel(),
-                      if (_aiLoading)
+                      if (_aiLoading || _rephraseLoading)
                         const Padding(
                           padding: EdgeInsets.all(8),
                           child: CircularProgressIndicator(
@@ -669,6 +1071,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                         ),
                       if (_aiSuggestion != null)
                         _buildAiSuggestionFloatingPanel(),
+                      if (_rephraseVersions != null)
+                        _buildRephrasePanel(),
                     ],
                   ),
                 ),
@@ -818,10 +1222,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               icon: const Icon(Icons.call_rounded, color: Colors.white70),
               onPressed: () {},
             ),
-            IconButton(
-              icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
-              onPressed: () {},
-            ),
+            _summaryLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.summarize_rounded,
+                        color: Colors.white70),
+                    tooltip: "Konuşmayı Özetle",
+                    onPressed: widget.isGroup ? null : _fetchConversationSummary,
+                  ),
           ],
         ),
       ),
@@ -1093,8 +1511,178 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   // ----------------------------------------------------------
+  // REPHRASE PANEL
+  // ----------------------------------------------------------
+  static const _rephraseConfig = {
+    "kind": {
+      "label": "Nazik",
+      "icon": Icons.favorite_rounded,
+      "color": Color(0xFFE91E8C),
+    },
+    "direct": {
+      "label": "Doğrudan",
+      "icon": Icons.bolt_rounded,
+      "color": Color(0xFF6366F1),
+    },
+    "humorous": {
+      "label": "Esprili",
+      "icon": Icons.emoji_emotions_rounded,
+      "color": Color(0xFFF59E0B),
+    },
+  };
+
+  Widget _buildRephrasePanel() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.97),
+        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Başlık
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.edit_note_rounded,
+                    color: AppTheme.primaryColor, size: 18),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "Nasıl Söylesem?",
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: AppTheme.textColor(context),
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => setState(() => _rephraseVersions = null),
+                child: Icon(Icons.close, size: 18, color: Colors.grey.shade400),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Versiyon satırları
+          ...(_rephraseVersions ?? []).map((v) {
+            final tone = v["tone"] as String? ?? "kind";
+            final text = v["text"] as String? ?? "";
+            final config =
+                _rephraseConfig[tone] ?? _rephraseConfig["kind"]!;
+            final color = config["color"] as Color;
+            final icon = config["icon"] as IconData;
+            final label = config["label"] as String;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () {
+                    _messageController.text = text;
+                    _messageController.selection = TextSelection.fromPosition(
+                        TextPosition(offset: text.length));
+                    setState(() => _rephraseVersions = null);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: color.withOpacity(0.22)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          child: Row(
+                            children: [
+                              Icon(icon, size: 14, color: color),
+                              const SizedBox(width: 4),
+                              Text(
+                                label,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 16,
+                          color: color.withOpacity(0.25),
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        Expanded(
+                          child: Text(
+                            text,
+                            style: GoogleFonts.inter(
+                              fontSize: 13.5,
+                              color: AppTheme.textColor(context),
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(Icons.arrow_forward_ios_rounded,
+                            size: 11, color: Colors.grey.shade400),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ----------------------------------------------------------
   // SMART REPLIES DRAWER
   // ----------------------------------------------------------
+  static const _toneConfig = {
+    "empathetic": {
+      "label": "Empatik",
+      "icon": Icons.favorite_rounded,
+      "color": Color(0xFFE91E8C),
+    },
+    "humorous": {
+      "label": "Esprili",
+      "icon": Icons.emoji_emotions_rounded,
+      "color": Color(0xFFF59E0B),
+    },
+    "formal": {
+      "label": "Resmi",
+      "icon": Icons.business_center_rounded,
+      "color": Color(0xFF3B82F6),
+    },
+  };
+
   Widget _buildSmartRepliesDrawer() {
     return Container(
       width: double.infinity,
@@ -1102,55 +1690,116 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
         color: AppTheme.cardColor(context),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 4,
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 6,
             offset: const Offset(0, -2),
           ),
         ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: _smartReplies!.map((reply) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    _messageController.text = reply;
-                  },
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.primaryColor.withOpacity(0.08),
-                          AppTheme.accentColor.withOpacity(0.08),
-                        ],
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Başlık satırı
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded,
+                    size: 13, color: AppTheme.primaryColor),
+                const SizedBox(width: 5),
+                Text(
+                  "Hızlı Yanıtlar",
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(() => _smartReplies = null),
+                  child: Icon(Icons.close_rounded,
+                      size: 16, color: Colors.grey.shade400),
+                ),
+              ],
+            ),
+          ),
+          // Yanıt satırları
+          ..._smartReplies!.map((reply) {
+            final tone = reply["tone"] as String? ?? "formal";
+            final text = reply["text"] as String? ?? "";
+            final config = _toneConfig[tone] ?? _toneConfig["formal"]!;
+            final color = config["color"] as Color;
+            final icon = config["icon"] as IconData;
+            final label = config["label"] as String;
+
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _messageController.text = text,
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: color.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      // Ton ikonu + etiket
+                      Container(
+                        width: 72,
+                        child: Row(
+                          children: [
+                            Icon(icon, size: 14, color: color),
+                            const SizedBox(width: 4),
+                            Text(
+                              label,
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: color,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppTheme.primaryColor.withOpacity(0.25),
+                      // Ayraç
+                      Container(
+                        width: 1,
+                        height: 16,
+                        color: color.withOpacity(0.25),
+                        margin: const EdgeInsets.symmetric(horizontal: 10),
                       ),
-                    ),
-                    child: Text(
-                      reply,
-                      style: GoogleFonts.inter(
-                        color: AppTheme.darkColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13.5,
+                      // Yanıt metni
+                      Expanded(
+                        child: Text(
+                          text,
+                          style: GoogleFonts.inter(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textColor(context),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 6),
+                      Icon(Icons.arrow_forward_ios_rounded,
+                          size: 11, color: Colors.grey.shade400),
+                    ],
                   ),
                 ),
               ),
             );
-          }).toList(),
-        ),
+          }),
+        ],
       ),
     );
   }
@@ -1221,7 +1870,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
             const SizedBox(width: 6),
 
-            // 🤖 AI TEST BUTTON
+            // 🤖 AI MENU BUTTON
             Container(
               decoration: BoxDecoration(
                 color: AppTheme.accentColor.withOpacity(0.1),
@@ -1230,7 +1879,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
               child: IconButton(
                 icon: const Icon(Icons.auto_awesome_rounded, size: 22),
                 color: AppTheme.accentColor,
-                onPressed: _aiLoading ? null : _testComplete,
+                onPressed: (_aiLoading || _rephraseLoading) ? null : _openAiMenu,
               ),
             ),
 

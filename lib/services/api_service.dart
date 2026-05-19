@@ -129,7 +129,7 @@ class ApiService {
   // -------------------------------------------------------------
   // SMART REPLIES → /smart_replies
   // -------------------------------------------------------------
-  Future<List<String>> getSmartReplies({
+  Future<List<Map<String, dynamic>>> getSmartReplies({
     required int senderId,
     required int receiverId,
     required String lastMessage,
@@ -143,9 +143,11 @@ class ApiService {
           "last_message": lastMessage,
         },
       );
-      
+
       if (res.data != null && res.data["replies"] != null) {
-        return List<String>.from(res.data["replies"]);
+        return List<Map<String, dynamic>>.from(
+          (res.data["replies"] as List).map((e) => Map<String, dynamic>.from(e)),
+        );
       }
       return [];
     } catch (e) {
@@ -187,6 +189,76 @@ class ApiService {
       options: Options(
         headers: {"Content-Type": "multipart/form-data"},
       ),
+    );
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  // -------------------------------------------------------------
+  // SUGGESTION ANALYTICS → /suggestion_analytics/{user_id}
+  // -------------------------------------------------------------
+  Future<Map<String, dynamic>> getSuggestionAnalytics(int userId) async {
+    try {
+      final res = await _dio.get("/suggestion_analytics/$userId");
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  // -------------------------------------------------------------
+  // CONVERSATION STATS → /conversation_stats/{user1_id}/{user2_id}
+  // -------------------------------------------------------------
+  Future<Map<String, dynamic>> getConversationStats({
+    required int user1Id,
+    required int user2Id,
+  }) async {
+    try {
+      final res = await _dio.get("/conversation_stats/$user1Id/$user2Id");
+      return Map<String, dynamic>.from(res.data);
+    } catch (e) {
+      return {};
+    }
+  }
+
+  // -------------------------------------------------------------
+  // REPHRASE → /rephrase
+  // -------------------------------------------------------------
+  Future<List<Map<String, dynamic>>> getRephrase({
+    required String text,
+    required int senderId,
+    required int receiverId,
+  }) async {
+    final res = await _dio.post(
+      "/rephrase",
+      data: {
+        "text": text,
+        "sender_id": senderId,
+        "receiver_id": receiverId,
+      },
+    );
+    if (res.data != null && res.data["versions"] != null) {
+      return List<Map<String, dynamic>>.from(
+        (res.data["versions"] as List).map((e) => Map<String, dynamic>.from(e)),
+      );
+    }
+    return [];
+  }
+
+  // -------------------------------------------------------------
+  // CONVERSATION SUMMARY → /conversation_summary
+  // -------------------------------------------------------------
+  Future<Map<String, dynamic>> getConversationSummary({
+    required int senderId,
+    required int receiverId,
+    int limit = 50,
+  }) async {
+    final res = await _dio.post(
+      "/conversation_summary",
+      data: {
+        "sender_id": senderId,
+        "receiver_id": receiverId,
+        "limit": limit,
+      },
     );
     return Map<String, dynamic>.from(res.data);
   }
